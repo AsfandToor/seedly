@@ -1,5 +1,5 @@
 {
-  "name": "@codeacme/seeding-agent",
+  "name": "@codeacme/seedly",
   "version": "1.0.0",
   "description": "An AI based Seeding Agent, that will use MCP protocols to understand your DB schema and seed fake data according to it.",
   "main": "index.js",
@@ -9,7 +9,7 @@
     "start": "node dist/main.js",
     "dev": "swc main.ts -w -o dist/main.js"
   },
-  "author": "AsfandToor",
+  "author": "CodeAcme",
   "license": "ISC",
   "devDependencies": {
     "@swc/cli": "^0.7.7",
