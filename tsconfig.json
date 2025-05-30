@@ -1,0 +1,58 @@
+{
+  "compilerOptions": {
+    // Target and Module Configuration
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+
+    // Project Structure
+    "rootDir": "./src",
+    "outDir": "./dist",
+
+    // Type Checking
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+
+    // Module Resolution
+    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["*"],
+      "@core/*": ["core/*"],
+      "@ai/*": ["ai/*"],
+      "@db/*": ["db/*"],
+      "@generators/*": ["generators/*"],
+      "@utils/*": ["utils/*"],
+      "@types/*": ["types/*"],
+      "@config/*": ["config/*"],
+      "@cli/*": ["cli/*"]
+    },
+
+    // Decorators Support
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    // Additional Features
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // Source Maps
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+
+    // Type Declarations
+    "typeRoots": ["./node_modules/@types", "./src/types"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "tests", "**/*.test.ts", "**/*.spec.ts"]
+}

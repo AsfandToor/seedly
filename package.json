@@ -1,0 +1,38 @@
+{
+  "name": "@codeacme/seeding-agent",
+  "version": "1.0.0",
+  "description": "An AI based Seeding Agent, that will use MCP protocols to understand your DB schema and seed fake data according to it.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "swc main.ts -o dist/main.js",
+    "start": "node dist/main.js",
+    "dev": "swc main.ts -w -o dist/main.js"
+  },
+  "author": "AsfandToor",
+  "license": "ISC",
+  "devDependencies": {
+    "@swc/cli": "^0.7.7",
+    "@swc/core": "^1.11.29",
+    "@swc/jest": "^0.2.38",
+    "@types/node": "^22.15.24",
+    "@typescript-eslint/eslint-plugin": "^8.33.0",
+    "@typescript-eslint/parser": "^8.33.0",
+    "eslint": "^9.27.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.4.0",
+    "ts-node": "^10.9.2",
+    "tslib": "^2.8.1",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "chalk": "^5.4.1",
+    "commander": "^14.0.0",
+    "date-fns": "^4.1.0",
+    "inquirer": "^12.6.3",
+    "loadash": "^1.0.0",
+    "ora": "^8.2.0",
+    "zod": "^3.25.42"
+  }
+}
