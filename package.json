@@ -2,12 +2,24 @@
   "name": "@codeacme/seedly",
   "version": "1.0.0",
   "description": "An AI based Seeding Agent, that will use MCP protocols to understand your DB schema and seed fake data according to it.",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "bin": {
+    "seedly": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "swc main.ts -o dist/main.js",
-    "start": "node dist/main.js",
-    "dev": "swc main.ts -w -o dist/main.js"
+    "clean": "rm -rf dist",
+    "build": "npm run clean && swc ./src -d dist",
+    "start": "node dist/cli/index.js",
+    "dev": "swc src -w -d dist",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\""
   },
   "author": "CodeAcme",
   "license": "ISC",
