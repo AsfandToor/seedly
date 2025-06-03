@@ -40,11 +40,13 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
     "chalk": "^5.4.1",
+    "chokidar": "^4.0.3",
     "commander": "^14.0.0",
     "date-fns": "^4.1.0",
     "inquirer": "^12.6.3",
     "loadash": "^1.0.0",
     "ora": "^8.2.0",
+    "sqlite3": "^5.1.7",
     "zod": "^3.25.42"
   }
 }
