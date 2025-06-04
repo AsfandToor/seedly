@@ -38,11 +38,16 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@langchain/community": "^0.3.45",
+    "@langchain/core": "^0.3.57",
+    "@langchain/google-genai": "^0.2.10",
+    "@langchain/langgraph": "^0.3.0",
     "@modelcontextprotocol/sdk": "^1.12.1",
     "chalk": "^5.4.1",
     "chokidar": "^4.0.3",
     "commander": "^14.0.0",
     "date-fns": "^4.1.0",
+    "dotenv": "^16.5.0",
     "inquirer": "^12.6.3",
     "loadash": "^1.0.0",
     "ora": "^8.2.0",
