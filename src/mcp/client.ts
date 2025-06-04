@@ -64,6 +64,19 @@ async function geminiWithFunctionCalling() {
               },
             },
             {
+              name: 'seed-table',
+              description:
+                'Insert fake rows into a table based on its schema',
+              parameters: {
+                type: SchemaType.OBJECT,
+                properties: {
+                  tableName: { type: SchemaType.STRING },
+                  count: { type: SchemaType.NUMBER },
+                },
+                required: ['tableName', 'count'],
+              },
+            },
+            {
               name: 'query',
               description:
                 'Run an SQL query on the SQLite database.',
@@ -100,8 +113,26 @@ async function geminiWithFunctionCalling() {
     // Process a user query
     async function processQuery(userQuery: string) {
       console.log(`\n🧠 User: "${userQuery}"`);
+      const schemaResult = await client.readResource({
+        uri: 'schema://main',
+      });
+      const schemaText = schemaResult.contents[0].text;
+      const systemContext = [
+        {
+          role: 'user',
+          parts: [
+            {
+              text:
+                'The following is the schema of the SQLite database you are interacting with:\n\n' +
+                schemaText,
+            },
+          ],
+        },
+      ];
+
       const result = await model.generateContent({
         contents: [
+          ...systemContext,
           { role: 'user', parts: [{ text: userQuery }] },
         ],
       });
@@ -131,10 +162,8 @@ async function geminiWithFunctionCalling() {
 
     // Run a few demo queries
     const queries = [
-      'List all tables in my database',
-      'Show all records from the test table',
-      'Show the record in test table where name is Bob',
-      'Insert another record in the table test where name is Waleed and id is 4',
+      'seed addresses, orders, products and blog posts tables in the database with 10 records',
+      'find out how many rows are in the table test',
     ];
 
     for (const [i, query] of queries.entries()) {

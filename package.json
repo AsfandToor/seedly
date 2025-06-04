@@ -38,11 +38,12 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@faker-js/faker": "^9.8.0",
+    "@google/generative-ai": "^0.24.1",
     "@langchain/community": "^0.3.45",
     "@langchain/core": "^0.3.57",
     "@langchain/google-genai": "^0.2.10",
     "@langchain/langgraph": "^0.3.0",
-    "@google/generative-ai": "^0.24.1",
     "@modelcontextprotocol/sdk": "^1.12.1",
     "chalk": "^5.4.1",
     "chokidar": "^4.0.3",
