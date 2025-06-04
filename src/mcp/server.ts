@@ -7,10 +7,59 @@ import { z } from 'zod';
 import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
 import { faker } from '@faker-js/faker';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import 'dotenv/config';
+const googleGenAi = new GoogleGenerativeAI(
+  process.env.GOOGLE_API_KEY!,
+);
+const model = googleGenAi.getGenerativeModel({
+  model: 'gemini-1.5-flash',
+});
 const server = new McpServer({
   name: 'seeder',
   version: '1.0.0',
 });
+
+const columnPromptCache = new Map();
+
+async function generateValueWithLLM(
+  column: {
+    name: string;
+    type: string;
+  },
+  count: number,
+) {
+  const key = `${column.name}:${column.type}:${count}`;
+  if (columnPromptCache.has(key))
+    return columnPromptCache.get(key);
+
+  const prompt = `Generate ${count} fake values for a SQL column named "${column.name}" of type "${column.type}". Return the data as a JSON array, nothing else. Each value should be realistic.`;
+
+  const res = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+  });
+
+  const response = res.response.text().trim();
+  try {
+    const clean = response
+      .replace(/^```json\s*/i, '')
+      .replace(/```$/i, '')
+      .trim();
+    const parsed = JSON.parse(clean);
+    if (!Array.isArray(parsed)) {
+      throw new Error('Not an array');
+    }
+    columnPromptCache.set(key, parsed);
+    return parsed;
+  } catch (err) {
+    console.error(
+      `Failed to parse LLM response: ${response}`,
+    );
+    throw new Error(
+      `Invalid LLM response for column ${column.name}`,
+    );
+  }
+}
 
 const getDb = () => {
   const db = new sqlite3.Database('database.db');
@@ -179,10 +228,26 @@ server.tool(
         .map(() => '?')
         .join(', ');
       const insertSQL = `INSERT INTO ${tableName} (${colNames.join(', ')}) VALUES (${placeholders})`;
+      const valueMatrix: any[][] = []; // [row][col]
+      for (const col of insertableColumns) {
+        const values = await generateValueWithLLM(
+          col,
+          count,
+        );
+        if (values.length < count) {
+          throw new Error(
+            `LLM returned insufficient values for ${col.name}`,
+          );
+        }
+        valueMatrix.push(values);
+      }
 
       for (let i = 0; i < count; i++) {
-        const values = insertableColumns.map(generateValue);
-        await db.run(insertSQL, values);
+        // const values = insertableColumns.map(generateValue); //if condition implementation
+        const rowValues = valueMatrix.map(
+          (colVals) => colVals[i],
+        );
+        await db.run(insertSQL, rowValues);
       }
 
       return {

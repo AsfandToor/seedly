@@ -162,7 +162,7 @@ async function geminiWithFunctionCalling() {
 
     // Run a few demo queries
     const queries = [
-      'seed addresses, orders, products and blog posts tables in the database with 10 records',
+      'seed order tables in the database with 10 records',
       'find out how many rows are in the table test',
     ];
 
