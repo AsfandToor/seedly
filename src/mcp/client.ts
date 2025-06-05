@@ -48,22 +48,6 @@ async function geminiWithFunctionCalling() {
         {
           functionDeclarations: [
             {
-              name: 'list-tables',
-              description:
-                'List all tables in the SQLite database.',
-              parameters: {
-                type: SchemaType.OBJECT,
-                properties: {
-                  all: {
-                    type: SchemaType.BOOLEAN,
-                    description:
-                      'Whether to list all tables.',
-                  },
-                },
-                required: ['all'],
-              },
-            },
-            {
               name: 'seed-table',
               description:
                 'Insert fake rows into a table based on its schema',
@@ -117,6 +101,7 @@ async function geminiWithFunctionCalling() {
         uri: 'schema://main',
       });
       const schemaText = schemaResult.contents[0].text;
+      console.log('the schema is ', schemaText);
       const systemContext = [
         {
           role: 'user',
