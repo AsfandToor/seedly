@@ -38,7 +38,6 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@faker-js/faker": "^9.8.0",
     "@google/generative-ai": "^0.24.1",
     "@langchain/community": "^0.3.45",
     "@langchain/core": "^0.3.57",
