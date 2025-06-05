@@ -14,7 +14,7 @@ const googleGenAi = new GoogleGenerativeAI(
 async function createMcpClient() {
   const transport = new StdioClientTransport({
     command: 'node',
-    args: ['dist/src/mcp/server.js'], // points to your Seeder MCP server
+    args: ['./dist/src/mcp/server.js'], // points to your Seeder MCP server
   });
 
   const client = new Client(

@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import SeederMCPServer from '../core/server';
+import SeederMCPServer from '../mcp/server';
 
 const program = new Command();
 
@@ -11,15 +11,51 @@ program
   .version('1.0.0')
   .option('-h, --help', 'Show help');
 
-// Start MCP Server
-program.option('-s, --start', 'Start the MCP server');
-
-program.parse(process.argv);
-
-const options = program.opts();
-
-if (options.start) {
-  console.log('Starting MCP server...');
-  const server = new SeederMCPServer();
-  server.start();
+function attachDbOptions(cmd: Command) {
+  return cmd
+    .option(
+      '--dialect <dialect>',
+      'Database dialect (sqlite, postgres, mysql)',
+      'sqlite',
+    )
+    .option('--db <path>', 'SQLite file path')
+    .option('--host <host>', 'DB host')
+    .option('--port <port>', 'DB port')
+    .option('--user <user>', 'DB user')
+    .option('--password <password>', 'DB password')
+    .option('--database <name>', 'Database name');
 }
+
+function extractDbConfig(options: any) {
+  return {
+    dialect: options.dialect,
+    db: options.db,
+    host: options.host,
+    port: options.port,
+    user: options.user,
+    password: options.password,
+    database: options.database,
+  };
+}
+
+attachDbOptions(program.command('start'))
+  .description(
+    'Start the MCP server to listen for seeding and query tasks',
+  )
+  .action(async (options) => {
+    const dbConfig = extractDbConfig(options);
+    await SeederMCPServer(dbConfig);
+  });
+
+// Start MCP Server
+// program.option('-s, --start', 'Start the MCP server');
+
+// program.parse(process.argv);
+
+// const options = program.opts();
+
+// if (options.start) {
+//   console.log('Starting MCP server...');
+//   const server = new SeederMCPServer();
+//   server.start();
+// }

@@ -15,3 +15,17 @@ export interface Dialect {
   ): Promise<void>;
   close(): Promise<void>;
 }
+
+export type DialectConfig =
+  | {
+      type: 'sqlite';
+      file: string;
+    }
+  | {
+      type: 'postgres' | 'mysql';
+      host: string;
+      port: number;
+      user: string;
+      password: string;
+      database: string;
+    };
