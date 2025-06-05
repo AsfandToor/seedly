@@ -6,7 +6,6 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
-import { faker } from '@faker-js/faker';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import 'dotenv/config';
 const googleGenAi = new GoogleGenerativeAI(
@@ -160,56 +159,6 @@ server.tool(
   },
   async ({ tableName, count }) => {
     const db = getDb();
-
-    const generateValue = (column: any) => {
-      const name = column.name.toLowerCase();
-      const type = column.type.toLowerCase();
-
-      if (type.includes('int')) {
-        if (name.includes('age'))
-          return faker.number.int({ min: 10, max: 104 });
-        return faker.number.int({ min: 1, max: 10000 });
-      }
-
-      if (
-        type.includes('real') ||
-        type.includes('float') ||
-        type.includes('double')
-      )
-        return faker.number.float({ min: 0, max: 1000 });
-
-      if (type.includes('char') || type.includes('text')) {
-        if (name.includes('name'))
-          return faker.person.fullName();
-        if (name.includes('email'))
-          return faker.internet.email();
-        if (name.includes('username'))
-          return faker.internet.userName();
-        if (name.includes('phone'))
-          return faker.phone.number();
-        if (name.includes('city'))
-          return faker.location.city();
-        if (name.includes('country'))
-          return faker.location.country();
-        if (name.includes('address'))
-          return faker.location.streetAddress();
-        if (name.includes('bio'))
-          return faker.lorem.sentence();
-        return faker.word.words();
-      }
-
-      if (type.includes('bool'))
-        return faker.datatype.boolean() ? 1 : 0;
-
-      if (type.includes('date') || name.includes('date'))
-        return faker.date
-          .past()
-          .toISOString()
-          .split('T')[0];
-
-      return null;
-    };
-
     try {
       const columns = await db.all(
         `PRAGMA table_info(${tableName})`,
@@ -243,7 +192,6 @@ server.tool(
       }
 
       for (let i = 0; i < count; i++) {
-        // const values = insertableColumns.map(generateValue); //if condition implementation
         const rowValues = valueMatrix.map(
           (colVals) => colVals[i],
         );
