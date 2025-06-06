@@ -28,6 +28,7 @@
     "@swc/core": "^1.11.29",
     "@swc/jest": "^0.2.38",
     "@types/node": "^22.15.24",
+    "@types/pg": "^8.15.4",
     "@typescript-eslint/eslint-plugin": "^8.33.0",
     "@typescript-eslint/parser": "^8.33.0",
     "eslint": "^9.27.0",
@@ -51,7 +52,9 @@
     "dotenv": "^16.5.0",
     "inquirer": "^12.6.3",
     "loadash": "^1.0.0",
+    "mysql2": "^3.14.1",
     "ora": "^8.2.0",
+    "pg": "^8.16.0",
     "sqlite3": "^5.1.7",
     "zod": "^3.25.42"
   }

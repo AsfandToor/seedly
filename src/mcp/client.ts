@@ -14,7 +14,7 @@ const googleGenAi = new GoogleGenerativeAI(
 async function createMcpClient() {
   const transport = new StdioClientTransport({
     command: 'node',
-    args: ['dist/src/mcp/server.js'], // points to your Seeder MCP server
+    args: ['./dist/src/mcp/server.js'], // points to your Seeder MCP server
   });
 
   const client = new Client(
@@ -47,22 +47,6 @@ async function geminiWithFunctionCalling() {
       tools: [
         {
           functionDeclarations: [
-            {
-              name: 'list-tables',
-              description:
-                'List all tables in the SQLite database.',
-              parameters: {
-                type: SchemaType.OBJECT,
-                properties: {
-                  all: {
-                    type: SchemaType.BOOLEAN,
-                    description:
-                      'Whether to list all tables.',
-                  },
-                },
-                required: ['all'],
-              },
-            },
             {
               name: 'seed-table',
               description:
@@ -117,6 +101,7 @@ async function geminiWithFunctionCalling() {
         uri: 'schema://main',
       });
       const schemaText = schemaResult.contents[0].text;
+      console.log('the schema is ', schemaText);
       const systemContext = [
         {
           role: 'user',
