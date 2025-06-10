@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import SeederMCPServer from '../mcp/server';
+import geminiWithFunctionCalling from '../mcp/client';
 
 const program = new Command();
 
@@ -18,18 +18,19 @@ function attachDbOptions(cmd: Command) {
       'Database dialect (sqlite, postgres, mysql)',
       'sqlite',
     )
-    .option('--db <path>', 'SQLite file path')
+    .option('--file <path>', 'SQLite file path')
     .option('--host <host>', 'DB host')
     .option('--port <port>', 'DB port')
     .option('--user <user>', 'DB user')
     .option('--password <password>', 'DB password')
-    .option('--database <name>', 'Database name');
+    .option('--database <name>', 'Database name')
+    .argument('<prompt>', 'Your natural language query');
 }
 
 function extractDbConfig(options: any) {
   return {
-    dialect: options.dialect,
-    db: options.db,
+    type: options.dialect,
+    file: options.file,
     host: options.host,
     port: options.port,
     user: options.user,
@@ -42,11 +43,12 @@ attachDbOptions(program.command('start'))
   .description(
     'Start the MCP server to listen for seeding and query tasks',
   )
-  .action(async (options) => {
+  .action(async (prompt, options) => {
     const dbConfig = extractDbConfig(options);
-    await SeederMCPServer(dbConfig);
-  });
 
+    await geminiWithFunctionCalling(prompt, dbConfig);
+  });
+program.parse(process.argv);
 // Start MCP Server
 // program.option('-s, --start', 'Start the MCP server');
 

@@ -4,17 +4,28 @@ import {
   GoogleGenerativeAI,
 } from '@google/generative-ai';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-
+import logger from '../logger';
+import { DialectConfig } from '@/core/utils/db/dialects/types';
+import 'dotenv/config';
+const apiKey = process.env.GOOGLE_API_KEY;
+if (!apiKey) {
+  throw new Error(
+    'GOOGLE_API_KEY environment variable not found.',
+  );
+}
 // Init Google Gemini
-const googleGenAi = new GoogleGenerativeAI(
-  process.env.GOOGLE_API_KEY!,
-);
+const googleGenAi = new GoogleGenerativeAI(apiKey);
 
 // MCP Client Setup
-async function createMcpClient() {
+async function createMcpClient(dbConfig: DialectConfig) {
+  const dbConfigString = JSON.stringify(dbConfig);
   const transport = new StdioClientTransport({
     command: 'node',
-    args: ['./dist/src/mcp/server.js'], // points to your Seeder MCP server
+    args: [
+      './dist/src/mcp/server.js',
+      '--db-config',
+      dbConfigString,
+    ], // points to your Seeder MCP server
   });
 
   const client = new Client(
@@ -27,17 +38,21 @@ async function createMcpClient() {
 }
 
 // Gemini Function-Calling Demo
-async function geminiWithFunctionCalling() {
-  console.log(
+async function geminiWithFunctionCalling(
+  prompt: string,
+  dbConfig: any,
+) {
+  logger.info(
     '🤖 Gemini AI with Seeder MCP Tool Function Calling',
   );
 
-  const { client, transport } = await createMcpClient();
+  const { client, transport } =
+    await createMcpClient(dbConfig);
 
   try {
     // Register tools
     const { tools } = await client.listTools();
-    console.log(
+    logger.info(
       `Available tools: ${tools.map((t) => t.name).join(', ')}`,
     );
 
@@ -63,7 +78,7 @@ async function geminiWithFunctionCalling() {
             {
               name: 'query',
               description:
-                'Run an SQL query on the SQLite database.',
+                'Run an SQL query on the database.',
               parameters: {
                 type: SchemaType.OBJECT,
                 properties: {
@@ -83,8 +98,8 @@ async function geminiWithFunctionCalling() {
     // Handles Gemini's function call requests
     async function handleFunctionCall(functionCall: any) {
       const { name, args } = functionCall;
-      console.log(`🔧 Gemini requested: ${name}`);
-      console.log(`📥 Args: ${JSON.stringify(args)}`);
+      logger.info(`🔧 Gemini requested: ${name}`);
+      logger.info(`📥 Args: ${JSON.stringify(args)}`);
 
       const result = await client.callTool({
         name,
@@ -96,12 +111,11 @@ async function geminiWithFunctionCalling() {
 
     // Process a user query
     async function processQuery(userQuery: string) {
-      console.log(`\n🧠 User: "${userQuery}"`);
+      logger.info(`\n🧠 User: "${userQuery}"`);
       const schemaResult = await client.readResource({
         uri: 'schema://main',
       });
       const schemaText = schemaResult.contents[0].text;
-      console.log('the schema is ', schemaText);
       const systemContext = [
         {
           role: 'user',
@@ -146,25 +160,25 @@ async function geminiWithFunctionCalling() {
     }
 
     // Run a few demo queries
-    const queries = [
-      'seed order tables in the database with 10 records',
-      'find out how many rows are in the table test',
-    ];
+    // const queries = [
+    //   prompt
+    // ];
 
-    for (const [i, query] of queries.entries()) {
-      console.log(`\n▶️ Demo #${i + 1}`);
-      const response = await processQuery(query);
-      console.log('\n💬 Gemini says:\n' + '-'.repeat(40));
-      console.log(response);
-      console.log('-'.repeat(40));
-      await new Promise((res) => setTimeout(res, 1500));
-    }
+    // for (const [i, query] of queries.entries()) {
+    //   logger.info(`\n▶️ Demo #${i + 1}`);
+    //   const response = await processQuery(query);
+    //   logger.info('\n💬 Gemini says:\n' + '-'.repeat(40));
+    //   logger.info(response);
+    //   logger.info('-'.repeat(40));
+    //   await new Promise((res) => setTimeout(res, 1500));
+    // }
+    const response = await processQuery(prompt);
+    logger.info(response);
   } catch (err) {
-    console.error('🚨 Error:', err);
+    logger.error(err);
   } finally {
     await transport.close();
-    console.log('👋 Closed transport');
+    logger.info('👋 Closed transport');
   }
 }
-
-geminiWithFunctionCalling().catch(console.error);
+export default geminiWithFunctionCalling;

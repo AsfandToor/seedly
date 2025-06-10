@@ -10,15 +10,29 @@ Object.defineProperty(exports, "generateValueWithLLM", {
 });
 const _generativeai = require("@google/generative-ai");
 require("dotenv/config");
-const googleGenAi = new _generativeai.GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+const _logger = /*#__PURE__*/ _interop_require_default(require("../logger"));
+function _interop_require_default(obj) {
+    return obj && obj.__esModule ? obj : {
+        default: obj
+    };
+}
+const apiKey = process.env.GOOGLE_API_KEY;
+if (!apiKey) {
+    throw new Error('GOOGLE_API_KEY environment variable not found.');
+}
+const googleGenAi = new _generativeai.GoogleGenerativeAI(apiKey);
 const model = googleGenAi.getGenerativeModel({
     model: 'gemini-1.5-flash'
 });
 async function generateValueWithLLM(column, count) {
-    const columnPromptCache = new Map();
-    const key = `${column.name}:${column.type}:${count}`;
-    if (columnPromptCache.has(key)) return columnPromptCache.get(key);
-    const prompt = `Generate ${count} fake values for a SQL column named "${column.name}" of type "${column.type}". Return the data as a JSON array, nothing else. Each value should be realistic.`;
+    let prompt = `Generate ${count} fake values for a SQL column named "${column.name}" of type "${column.type}". Return the data as a JSON array, nothing else. Each value should be realistic.`;
+    if (column.enumValues && column.enumValues.length > 0) {
+        _logger.default.warn('enum encountered');
+        _logger.default.info(column.enumValues);
+        const allowedValues = column.enumValues.map((val)=>`'${val}'`).join(', ');
+        prompt = `Generate ${count} fake values for a SQL column named "${column.name}". This column is an ENUM type, and the ONLY allowed values are: [${allowedValues}]. Return the data as a JSON array, nothing else.`;
+    }
+    _logger.default.warn('just after the enum if condition');
     const res = await model.generateContent({
         contents: [
             {
@@ -38,7 +52,6 @@ async function generateValueWithLLM(column, count) {
         if (!Array.isArray(parsed)) {
             throw new Error('Not an array');
         }
-        columnPromptCache.set(key, parsed);
         return parsed;
     } catch (err) {
         console.error(`Failed to parse LLM response: ${response}`);

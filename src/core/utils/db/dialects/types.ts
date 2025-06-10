@@ -2,6 +2,7 @@ export type Column = {
   name: string;
   type: string;
   pk?: boolean;
+  enumValues?: string[];
 };
 
 export interface Dialect {

@@ -3,65 +3,47 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import { generateValueWithLLM } from '../core/data-generator';
 import { getDialect } from '../core/utils/db/dialects';
-
+import { DialectConfig } from '@/core/utils/db/dialects/types';
+import logger from '../logger';
+import 'mcps-logger/console';
 const server = new McpServer({
   name: 'seeder',
   version: '1.0.0',
+  capabilities: {
+    logging: {},
+  },
 });
+const args = process.argv.slice(2); // The first two elements are 'node' and the script path
 
-// const getDb = () => {
-//   const db = new sqlite3.Database('database.db');
-//   return {
-//     all: promisify<string, any[]>(db.all.bind(db)),
-//     run: (...args: Parameters<typeof db.run>) =>
-//       new Promise<void>((resolve, reject) => {
-//         db.run(...args, function (err: any) {
-//           if (err) reject(err);
-//           else resolve();
-//         });
-//       }),
+let dbConfig: any = {};
+const dbConfigArgIndex = args.indexOf('--db-config');
 
-//     close: promisify(db.close.bind(db)),
-//   };
-// };
-const dialect = getDialect({
-  type: 'sqlite',
-  file: 'database.db',
-});
-// server.tool(
-//   'query',
-//   { sql: z.string() },
-//   async ({ sql }) => {
-//     const db = getDb();
-//     try {
-//       const results = await db.all(sql);
-//       return {
-//         content: [
-//           {
-//             type: 'text',
-//             text: JSON.stringify(results, null, 2),
-//           },
-//         ],
-//       };
-//     } catch (err: unknown) {
-//       const error = err as Error;
-//       return {
-//         content: [
-//           {
-//             type: 'text',
-//             text: `Error: ${error.message}`,
-//           },
-//         ],
-//         isError: true,
-//       };
-//     } finally {
-//       await db.close();
-//     }
-//   },
-// );
+if (dbConfigArgIndex !== -1 && args[dbConfigArgIndex + 1]) {
+  try {
+    dbConfig = JSON.parse(args[dbConfigArgIndex + 1]);
+  } catch (e: any) {
+    logger.error(
+      { error: e.message, arg: args[dbConfigArgIndex + 1] },
+      'Failed to parse --db-config argument as JSON.',
+    );
+    process.exit(1); // Exit if config is malformed
+  }
+} else {
+  logger.warn(
+    'No --db-config argument found or it was empty. Proceeding without DB configuration.',
+  );
+  process.exit(1); // Exit if config is malformed
+}
+
+const dialect = getDialect(dbConfig);
 
 server.resource('schema', 'schema://main', async (uri) => {
+  console.log(
+    'SERVER: >>> Schema resource handler ENTERED',
+  ); // TEMPORARY
+  logger.debug('Schema resource requested.');
   const schema = await dialect.getSchema();
+  logger.debug(schema);
   return {
     contents: [
       {
@@ -80,8 +62,14 @@ server.tool(
   },
   async ({ tableName, count }) => {
     try {
+      console.log(
+        `SERVER_DEBUG: Entering 'seed-table' tool for table: ${tableName}, count: ${count}`,
+      );
+      logger.info(
+        `Tool 'seed-table' called for table: ${tableName}, count: ${count}`,
+      );
       const columns = await dialect.getColumns(tableName);
-
+      logger.warn(columns);
       if (columns.length === 0) {
         throw new Error(
           `Table "${tableName}" does not exist.`,
@@ -93,10 +81,7 @@ server.tool(
           !col.pk && !col.name.toLowerCase().includes('id'),
       );
       const colNames = insertableColumns.map((c) => c.name);
-      // const placeholders = colNames
-      //   .map(() => '?')
-      //   .join(', ');
-      // const insertSQL = `INSERT INTO ${tableName} (${colNames.join(', ')}) VALUES (${placeholders})`;
+
       const valueMatrix: any[][] = []; // [row][col]
       for (const col of insertableColumns) {
         const values = await generateValueWithLLM(
@@ -114,12 +99,6 @@ server.tool(
         valueMatrix.map((colVals) => colVals[i]),
       );
 
-      // for (let i = 0; i < count; i++) {
-      //   const rowValues = valueMatrix.map(
-      //     (colVals) => colVals[i],
-      //   );
-      //   await db.run(insertSQL, rowValues);
-      // }
       await dialect.insertRows(tableName, colNames, rows);
       return {
         content: [
@@ -149,12 +128,12 @@ async function main() {
 
 // Handle graceful shutdown
 process.on('SIGINT', () => {
-  console.error('Shutting down Airweave MCP server...');
+  console.error('Shutting down MCP server...');
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.error('Shutting down Airweave MCP server...');
+  console.error('Shutting down MCP server...');
   process.exit(0);
 });
 

@@ -1,11 +1,5 @@
 import mysql from 'mysql2/promise';
-import { Dialect } from './types';
-
-interface Column {
-  name: string;
-  type: string;
-  pk: boolean;
-}
+import { Column, Dialect } from './types';
 
 export class MysqlDialect implements Dialect {
   private pool: mysql.Pool;
