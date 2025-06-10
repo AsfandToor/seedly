@@ -1,6 +1,23 @@
 import { Command } from 'commander';
 import geminiWithFunctionCalling from '../mcp/client';
 
+//to run mysql or postgres use following command in terminal
+/**
+ * 
+ node dist/src/cli/index.js start \
+  --dialect postgres \
+  --host localhost \
+  --port 5432 \
+  --user postgres \
+  --password "" \
+  --database gen_backend_v2_development \
+  "seed the users table with 5 records"
+
+  
+  To run sqlite use the following
+  node dist/src/cli/index.js start "seed the users table with 5 records" --dialect sqlite --file database.db
+ */
+
 const program = new Command();
 
 program

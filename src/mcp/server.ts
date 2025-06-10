@@ -5,13 +5,15 @@ import { generateValueWithLLM } from '../core/data-generator';
 import { getDialect } from '../core/utils/db/dialects';
 import { DialectConfig } from '@/core/utils/db/dialects/types';
 import logger from '../logger';
-import 'mcps-logger/console';
+//add the line below to turn on debug mode and send logs to mcps-logger
+// import 'mcps-logger/console';
 const server = new McpServer({
   name: 'seeder',
   version: '1.0.0',
-  capabilities: {
-    logging: {},
-  },
+  //turn on and use with  npx mcps-logger  to see server logs with the inspector
+  // capabilities: {
+  //   logging: {},
+  // },
 });
 const args = process.argv.slice(2); // The first two elements are 'node' and the script path
 
