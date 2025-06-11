@@ -1,156 +1,61 @@
-import {
-  McpServer,
-  ResourceTemplate,
-} from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import sqlite3 from 'sqlite3';
-import { promisify } from 'util';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import 'dotenv/config';
-const googleGenAi = new GoogleGenerativeAI(
-  process.env.GOOGLE_API_KEY!,
-);
-const model = googleGenAi.getGenerativeModel({
-  model: 'gemini-1.5-flash',
-});
+import { generateValueWithLLM } from '../core/data-generator';
+import { getDialect } from '../core/utils/db/dialects';
+import { DialectConfig } from '@/core/utils/db/dialects/types';
+import logger from '../logger';
+//add the line below to turn on debug mode and send logs to mcps-logger
+// import 'mcps-logger/console';
 const server = new McpServer({
   name: 'seeder',
   version: '1.0.0',
+  //turn on and use with  npx mcps-logger  to see server logs with the inspector
+  // capabilities: {
+  //   logging: {},
+  // },
 });
+const args = process.argv.slice(2); // The first two elements are 'node' and the script path
 
-const columnPromptCache = new Map();
+let dbConfig: any = {};
+const dbConfigArgIndex = args.indexOf('--db-config');
 
-async function generateValueWithLLM(
-  column: {
-    name: string;
-    type: string;
-  },
-  count: number,
-) {
-  const key = `${column.name}:${column.type}:${count}`;
-  if (columnPromptCache.has(key))
-    return columnPromptCache.get(key);
-
-  const prompt = `Generate ${count} fake values for a SQL column named "${column.name}" of type "${column.type}". Return the data as a JSON array, nothing else. Each value should be realistic.`;
-
-  const res = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-  });
-
-  const response = res.response.text().trim();
+if (dbConfigArgIndex !== -1 && args[dbConfigArgIndex + 1]) {
   try {
-    const clean = response
-      .replace(/^```json\s*/i, '')
-      .replace(/```$/i, '')
-      .trim();
-    const parsed = JSON.parse(clean);
-    if (!Array.isArray(parsed)) {
-      throw new Error('Not an array');
-    }
-    columnPromptCache.set(key, parsed);
-    return parsed;
-  } catch (err) {
-    console.error(
-      `Failed to parse LLM response: ${response}`,
+    dbConfig = JSON.parse(args[dbConfigArgIndex + 1]);
+  } catch (e: any) {
+    logger.error(
+      { error: e.message, arg: args[dbConfigArgIndex + 1] },
+      'Failed to parse --db-config argument as JSON.',
     );
-    throw new Error(
-      `Invalid LLM response for column ${column.name}`,
-    );
+    process.exit(1); // Exit if config is malformed
   }
+} else {
+  logger.warn(
+    'No --db-config argument found or it was empty. Proceeding without DB configuration.',
+  );
+  process.exit(1); // Exit if config is malformed
 }
 
-const getDb = () => {
-  const db = new sqlite3.Database('database.db');
+const dialect = getDialect(dbConfig);
+
+server.resource('schema', 'schema://main', async (uri) => {
+  console.log(
+    'SERVER: >>> Schema resource handler ENTERED',
+  ); // TEMPORARY
+  logger.debug('Schema resource requested.');
+  const schema = await dialect.getSchema();
+  logger.debug(schema);
   return {
-    all: promisify<string, any[]>(db.all.bind(db)),
-    run: (...args: Parameters<typeof db.run>) =>
-      new Promise<void>((resolve, reject) => {
-        db.run(...args, function (err: any) {
-          if (err) reject(err);
-          else resolve();
-        });
-      }),
-
-    close: promisify(db.close.bind(db)),
-  };
-};
-
-server.tool(
-  'list-tables',
-  { all: z.boolean() },
-  async ({ all }) => ({
-    content: [{ type: 'text', text: String(all) }],
-  }),
-);
-
-server.tool(
-  'query',
-  { sql: z.string() },
-  async ({ sql }) => {
-    const db = getDb();
-    try {
-      const results = await db.all(sql);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(results, null, 2),
-          },
-        ],
-      };
-    } catch (err: unknown) {
-      const error = err as Error;
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Error: ${error.message}`,
-          },
-        ],
-        isError: true,
-      };
-    } finally {
-      await db.close();
-    }
-  },
-);
-
-server.resource(
-  'tables',
-  new ResourceTemplate('tables://{name}', {
-    list: undefined,
-  }),
-  async (uri, { name }) => ({
     contents: [
       {
         uri: uri.href,
-        text: `Tables: ${name}`,
+        text: schema,
       },
     ],
-  }),
-);
-
-server.resource('schema', 'schema://main', async (uri) => {
-  const db = getDb();
-  try {
-    const tables = await db.all(
-      "SELECT sql FROM sqlite_master WHERE type='table'",
-    );
-    return {
-      contents: [
-        {
-          uri: uri.href,
-          text: tables
-            .map((t: { sql: string }) => t.sql)
-            .join('\n'),
-        },
-      ],
-    };
-  } finally {
-    await db.close();
-  }
+  };
 });
+
 server.tool(
   'seed-table',
   {
@@ -158,25 +63,27 @@ server.tool(
     count: z.number().min(1).max(100),
   },
   async ({ tableName, count }) => {
-    const db = getDb();
     try {
-      const columns = await db.all(
-        `PRAGMA table_info(${tableName})`,
+      console.log(
+        `SERVER_DEBUG: Entering 'seed-table' tool for table: ${tableName}, count: ${count}`,
       );
-      if (columns.length === 0)
+      logger.info(
+        `Tool 'seed-table' called for table: ${tableName}, count: ${count}`,
+      );
+      const columns = await dialect.getColumns(tableName);
+      logger.warn(columns);
+      if (columns.length === 0) {
         throw new Error(
           `Table "${tableName}" does not exist.`,
         );
+      }
 
       const insertableColumns = columns.filter(
         (col) =>
           !col.pk && !col.name.toLowerCase().includes('id'),
       );
       const colNames = insertableColumns.map((c) => c.name);
-      const placeholders = colNames
-        .map(() => '?')
-        .join(', ');
-      const insertSQL = `INSERT INTO ${tableName} (${colNames.join(', ')}) VALUES (${placeholders})`;
+
       const valueMatrix: any[][] = []; // [row][col]
       for (const col of insertableColumns) {
         const values = await generateValueWithLLM(
@@ -190,14 +97,11 @@ server.tool(
         }
         valueMatrix.push(values);
       }
+      const rows = Array.from({ length: count }, (_, i) =>
+        valueMatrix.map((colVals) => colVals[i]),
+      );
 
-      for (let i = 0; i < count; i++) {
-        const rowValues = valueMatrix.map(
-          (colVals) => colVals[i],
-        );
-        await db.run(insertSQL, rowValues);
-      }
-
+      await dialect.insertRows(tableName, colNames, rows);
       return {
         content: [
           {
@@ -216,8 +120,6 @@ server.tool(
         ],
         isError: true,
       };
-    } finally {
-      await db.close();
     }
   },
 );
@@ -228,12 +130,12 @@ async function main() {
 
 // Handle graceful shutdown
 process.on('SIGINT', () => {
-  console.error('Shutting down Airweave MCP server...');
+  console.error('Shutting down MCP server...');
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.error('Shutting down Airweave MCP server...');
+  console.error('Shutting down MCP server...');
   process.exit(0);
 });
 
