@@ -2,7 +2,7 @@ import { DialectConfig } from './types';
 import { SQLiteDialect } from './sqlite';
 import { PostgresDialect } from './postgres';
 import { MysqlDialect } from './mysql';
-import logger from '../../../../logger';
+import logger from '../../../logger';
 
 export function getDialect(config: DialectConfig) {
   logger.warn('The file is coming up next');

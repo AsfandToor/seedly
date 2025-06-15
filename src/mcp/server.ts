@@ -2,8 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { generateValueWithLLM } from '../core/data-generator';
-import { getDialect } from '../core/utils/db/dialects';
-import { DialectConfig } from '@/core/utils/db/dialects/types';
+import { getDialect } from '../core/db/dialects';
 import logger from '../logger';
 //add the line below to turn on debug mode and send logs to mcps-logger
 // import 'mcps-logger/console';
