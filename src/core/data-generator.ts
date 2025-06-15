@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { Column } from './utils/db/dialects/types';
+import { Column } from './db/dialects/types';
 import 'dotenv/config';
 import logger from '../logger';
 const apiKey = process.env.GOOGLE_API_KEY;

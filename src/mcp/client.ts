@@ -5,7 +5,7 @@ import {
 } from '@google/generative-ai';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import logger from '../logger';
-import { DialectConfig } from '@/core/utils/db/dialects/types';
+import { DialectConfig } from '@/core/db/dialects/types';
 import 'dotenv/config';
 const apiKey = process.env.GOOGLE_API_KEY;
 if (!apiKey) {
