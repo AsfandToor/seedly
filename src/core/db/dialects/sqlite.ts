@@ -36,7 +36,10 @@ export class SQLiteDialect implements Dialect {
       .map((t: { sql: string }) => t.sql)
       .join('\n');
   }
-
+  async runQuery(sql: string): Promise<string> {
+    const rows = await this.all(sql);
+    return rows;
+  }
   async getColumns(tableName: string): Promise<Column[]> {
     return await this.all(
       `PRAGMA table_info(${tableName})`,

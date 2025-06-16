@@ -54,7 +54,36 @@ server.resource('schema', 'schema://main', async (uri) => {
     ],
   };
 });
-
+server.tool(
+  'query',
+  {
+    queryString: z.string(),
+  },
+  async ({ queryString }) => {
+    try {
+      logger.info(`Tool 'query' called`);
+      const response = dialect.runQuery(queryString);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(response, null, 2),
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: ${(err as Error).message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  },
+);
 server.tool(
   'seed-table',
   {
@@ -140,9 +169,6 @@ process.on('SIGTERM', () => {
 
 // Start the server
 main().catch((error) => {
-  console.error(
-    'Fatal error in Airweave MCP server:',
-    error,
-  );
+  console.error('Fatal error in MCP server:', error);
   process.exit(1);
 });

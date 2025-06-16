@@ -43,6 +43,13 @@ export class MysqlDialect implements Dialect {
 
     return schema.trim();
   }
+  async runQuery(
+    sql: string,
+  ): Promise<mysql.RowDataPacket[]> {
+    const [rows, _] =
+      await this.pool.query<mysql.RowDataPacket[]>(sql);
+    return rows;
+  }
 
   async getColumns(tableName: string): Promise<Column[]> {
     const [columns] = await this.pool.query<
