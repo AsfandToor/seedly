@@ -1,0 +1,135 @@
+import { generateValueWithLLM } from '../core/data-generator';
+import { getDialect } from '../core/db/dialects';
+import {
+  Dialect,
+  DialectConfig,
+} from '../core/db/dialects/types';
+import logger from '../logger';
+
+export class Seedly {
+  private dialect;
+  constructor(config: DialectConfig) {
+    this.dialect = getDialect(config);
+  }
+  //query tool
+  async schemaResource(uri: any): Promise<any> {
+    try {
+      console.log(
+        'SERVER: >>> Schema resource handler ENTERED',
+      ); // TEMPORARY
+      logger.debug('Schema resource requested.');
+      const schema = await this.dialect.getSchema();
+      logger.debug(schema);
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            text: schema,
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: ${(err as Error).message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+  async query(queryString: string): Promise<any> {
+    try {
+      logger.info(`Tool 'query' called`);
+      const response = this.dialect.runQuery(queryString);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(response, null, 2),
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: ${(err as Error).message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+  async seedTool(
+    tableName: string,
+    count: number,
+  ): Promise<any> {
+    try {
+      console.log(
+        `SERVER_DEBUG: Entering 'seed-table' tool for table: ${tableName}, count: ${count}`,
+      );
+      logger.info(
+        `Tool 'seed-table' called for table: ${tableName}, count: ${count}`,
+      );
+      const columns =
+        await this.dialect.getColumns(tableName);
+      logger.warn(columns);
+      if (columns.length === 0) {
+        throw new Error(
+          `Table "${tableName}" does not exist.`,
+        );
+      }
+
+      const insertableColumns = columns.filter(
+        (col) =>
+          !col.pk && !col.name.toLowerCase().includes('id'),
+      );
+      const colNames = insertableColumns.map((c) => c.name);
+
+      const valueMatrix: any[][] = []; // [row][col]
+      for (const col of insertableColumns) {
+        const values = await generateValueWithLLM(
+          col,
+          count,
+        );
+        if (values.length < count) {
+          throw new Error(
+            `LLM returned insufficient values for ${col.name}`,
+          );
+        }
+        valueMatrix.push(values);
+      }
+      const rows = Array.from({ length: count }, (_, i) =>
+        valueMatrix.map((colVals) => colVals[i]),
+      );
+
+      await this.dialect.insertRows(
+        tableName,
+        colNames,
+        rows,
+      );
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Successfully inserted ${count} fake rows into "${tableName}"`,
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: ${(err as Error).message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+}
