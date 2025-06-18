@@ -1,3 +1,4 @@
+import { table } from 'console';
 import { generateValueWithLLM } from '../core/data-generator';
 import { getDialect } from '../core/db/dialects';
 import {
@@ -69,9 +70,6 @@ export class Seedly {
     count: number,
   ): Promise<any> {
     try {
-      console.log(
-        `SERVER_DEBUG: Entering 'seed-table' tool for table: ${tableName}, count: ${count}`,
-      );
       logger.info(
         `Tool 'seed-table' called for table: ${tableName}, count: ${count}`,
       );
@@ -106,7 +104,6 @@ export class Seedly {
       const rows = Array.from({ length: count }, (_, i) =>
         valueMatrix.map((colVals) => colVals[i]),
       );
-
       await this.dialect.insertRows(
         tableName,
         colNames,

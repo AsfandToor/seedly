@@ -61,6 +61,8 @@ server.tool(
   },
   async ({ tableName, count }) => {
     const result = await seedly.seedTool(tableName, count);
+    logger.info('JUST BEFORE RETURNING THE RESULT');
+    logger.info(result);
     return result;
   },
 );

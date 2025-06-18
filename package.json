@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "An AI based Seeding Agent, that will use MCP protocols to understand your DB schema and seed fake data according to it.",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
     "seedly": "./dist/cli/index.js"
   },
@@ -13,7 +14,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -rf dist",
-    "build": "npm run clean && swc ./src -d dist",
+    "build": "npm run clean && tsc && swc ./src/cli -d dist/cli",
+    "build:swc": "npm run clean && swc ./src -d dist",
     "start": "node dist/cli/index.js",
     "dev": "swc src -w -d dist",
     "lint": "eslint . --ext .ts",
