@@ -1,6 +1,7 @@
 import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
 import { Dialect, Column } from './types';
+import logger from '../../../logger';
 
 export class SQLiteDialect implements Dialect {
   private db: sqlite3.Database;
@@ -36,7 +37,10 @@ export class SQLiteDialect implements Dialect {
       .map((t: { sql: string }) => t.sql)
       .join('\n');
   }
-
+  async runQuery(sql: string): Promise<string> {
+    const rows = await this.all(sql);
+    return rows;
+  }
   async getColumns(tableName: string): Promise<Column[]> {
     return await this.all(
       `PRAGMA table_info(${tableName})`,
@@ -51,7 +55,9 @@ export class SQLiteDialect implements Dialect {
     const placeholders = colNames.map(() => '?').join(', ');
     const sql = `INSERT INTO ${tableName} (${colNames.join(', ')}) VALUES (${placeholders})`;
     for (const row of rows) {
-      await this.run(sql, row);
+      let r = await this.run(sql, row);
+      logger.warn('after inserting the result is ');
+      logger.warn(r);
     }
   }
 

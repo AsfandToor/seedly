@@ -62,7 +62,29 @@ export class PostgresDialect implements Dialect {
       client.release();
     }
   }
-
+  async runQuery(sql: string): Promise<pg.QueryResult> {
+    const client = await this.pool.connect();
+    try {
+      const res = await client.query(sql);
+      return res;
+    } catch (err: any) {
+      logger.error(
+        {
+          error: err.message,
+          code: err.code,
+          stack: err.stack,
+        },
+        'Error in runQuery function.',
+      );
+      console.error(
+        'after querying the table (catch block): ',
+        err,
+      );
+      throw err; // Re-throw the original error for upstream handling
+    } finally {
+      client.release();
+    }
+  }
   async getColumns(tableName: string): Promise<Column[]> {
     const client = await this.pool.connect();
     try {

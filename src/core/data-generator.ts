@@ -29,12 +29,17 @@ export async function generateValueWithLLM(
     prompt = `Generate ${count} fake values for a SQL column named "${column.name}". This column is an ENUM type, and the ONLY allowed values are: [${allowedValues}]. Return the data as a JSON array, nothing else.`;
   }
   logger.warn('just after the enum if condition');
-  const res = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-  });
 
-  const response = res.response.text().trim();
   try {
+    const res = await model.generateContent({
+      contents: [
+        { role: 'user', parts: [{ text: prompt }] },
+      ],
+    });
+
+    const response = res.response.text().trim();
+    logger.warn('Data from LLM:');
+    logger.warn(response);
     //tthe llm when asked to return response in json always returns the data in the form of json block. the word json is written and is enclosed by ```{}```. We have to get rid of them here.
     const clean = response
       .replace(/^```json\s*/i, '')
@@ -47,9 +52,10 @@ export async function generateValueWithLLM(
 
     return parsed;
   } catch (err) {
-    console.error(
-      `Failed to parse LLM response: ${response}`,
+    logger.error(
+      'Error getting the response data from llm',
     );
+    logger.error(err);
     throw new Error(
       `Invalid LLM response for column ${column.name}`,
     );
