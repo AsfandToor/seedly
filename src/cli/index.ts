@@ -66,6 +66,7 @@ attachDbOptions(program.command('start'))
     await geminiWithFunctionCalling(prompt, dbConfig);
   });
 program.parse(process.argv);
+
 // Start MCP Server
 // program.option('-s, --start', 'Start the MCP server');
 
