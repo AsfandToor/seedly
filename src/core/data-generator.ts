@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { Column } from './db/dialects/types';
+import { Column } from './db/dialects/types.js';
 import 'dotenv/config';
-import logger from '../logger';
+import logger from '../logger.js';
 const apiKey = process.env.GOOGLE_API_KEY;
 if (!apiKey) {
   throw new Error(

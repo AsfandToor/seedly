@@ -3,10 +3,10 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { HumanMessage } from '@langchain/core/messages';
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import logger from '../logger';
-import { DialectConfig } from '@/core/db/dialects/types';
+import logger from '../logger.js';
+import { DialectConfig } from '../core/db/dialects/types.js';
 import 'dotenv/config';
-
+import { loadMcpTools } from '@langchain/mcp-adapters';
 const apiKey = process.env.GOOGLE_API_KEY;
 if (!apiKey) {
   throw new Error(
@@ -54,6 +54,7 @@ export class Seedly {
       temperature: this.temperature,
       model: this.modelName,
     });
+    this.initialize();
   }
 
   // Connects to MCP server and initializes tools
@@ -67,10 +68,10 @@ export class Seedly {
         dbConfigString,
       ],
     });
-    this.mcpClient = new Client(
-      { name: 'gemini-mcp-client', version: '1.0.0' },
-      { capabilities: { tools: {} } },
-    );
+    this.mcpClient = new Client({
+      name: 'gemini-mcp-client',
+      version: '1.0.0',
+    });
     await this.mcpClient.connect(this.transport);
     await this.setupTools();
     this.agent = createReactAgent({
@@ -83,39 +84,43 @@ export class Seedly {
   private async setupTools() {
     if (!this.mcpClient)
       throw new Error('MCP client not initialized');
-    const { tools } = await this.mcpClient.listTools();
-    logger.info(
-      `Available tools: ${tools.map((t: any) => t.name).join(', ')}`,
+    this.tools = await loadMcpTools(
+      'seeder',
+      this.mcpClient,
     );
-    this.tools = tools.map((tool: any) => {
-      return {
-        name: tool.name,
-        description: tool.description,
-        // LangChain tool signature
-        func: async (input: Record<string, any>) => {
-          logger.info(`🔧 MCP tool invoked: ${tool.name}`);
-          logger.info(`📥 Args: ${JSON.stringify(input)}`);
-          if (!this.mcpClient)
-            throw new Error('MCP client not initialized');
-          const result = await this.mcpClient.callTool({
-            name: tool.name,
-            arguments: input,
-          });
-          // Try to extract text content
-          if (
-            result &&
-            Array.isArray(result.content) &&
-            result.content[0] &&
-            typeof result.content[0].text === 'string'
-          ) {
-            return result.content[0].text;
-          }
-          return JSON.stringify(result);
-        },
-        // For LangChain compatibility
-        args: tool.parameters || {},
-      };
-    });
+
+    // logger.info(
+    //   `Available tools: ${tools.map((t: any) => t.name).join(', ')}`,
+    // );
+    // this.tools = tools.map((tool: any) => {
+    //   return {
+    //     name: tool.name,
+    //     description: tool.description,
+    //     // LangChain tool signature
+    //     func: async (input: Record<string, any>) => {
+    //       logger.info(`🔧 MCP tool invoked: ${tool.name}`);
+    //       logger.info(`📥 Args: ${JSON.stringify(input)}`);
+    //       if (!this.mcpClient)
+    //         throw new Error('MCP client not initialized');
+    //       const result = await this.mcpClient.callTool({
+    //         name: tool.name,
+    //         arguments: input,
+    //       });
+    //       // Try to extract text content
+    //       if (
+    //         result &&
+    //         Array.isArray(result.content) &&
+    //         result.content[0] &&
+    //         typeof result.content[0].text === 'string'
+    //       ) {
+    //         return result.content[0].text;
+    //       }
+    //       return JSON.stringify(result);
+    //     },
+    //     // For LangChain compatibility
+    //     args: tool.parameters || {},
+    //   };
+    // });
   }
 
   // Helper to fetch DB schema and return as system context
@@ -133,7 +138,7 @@ export class Seedly {
         ? schemaResult.contents[0].text
         : '';
     return (
-      'The following is the schema of the SQLite database you are interacting with:\n\n' +
+      'The following is the schema of the SQL database you are interacting with:\n\n' +
       schemaText
     );
   }

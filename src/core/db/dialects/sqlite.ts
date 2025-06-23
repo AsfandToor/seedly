@@ -1,7 +1,7 @@
 import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
-import { Dialect, Column } from './types';
-import logger from '../../../logger';
+import { Dialect, Column } from './types.js';
+import logger from '../../../logger.js';
 
 export class SQLiteDialect implements Dialect {
   private db: sqlite3.Database;

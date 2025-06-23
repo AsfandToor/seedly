@@ -1,11 +1,10 @@
-import { table } from 'console';
-import { generateValueWithLLM } from '../core/data-generator';
-import { getDialect } from '../core/db/dialects';
+import { generateValueWithLLM } from '../core/data-generator.js';
+import { getDialect } from '../core/db/dialects/index.js';
 import {
   Dialect,
   DialectConfig,
-} from '../core/db/dialects/types';
-import logger from '../logger';
+} from '../core/db/dialects/types.js';
+import logger from '../logger.js';
 
 export class Seedly {
   private dialect;

@@ -1,4 +1,4 @@
-import { Seedly } from '../mcp/tools';
+import { Seedly } from '../mcp/tools.js';
 
 (async () => {
   const seedingAgent = new Seedly({

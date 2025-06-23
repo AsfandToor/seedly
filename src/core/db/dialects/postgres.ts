@@ -1,7 +1,6 @@
 import pg from 'pg';
-import { Column, Dialect } from './types';
-import { unknown } from 'zod';
-import logger from '../../../logger';
+import { Column, Dialect } from './types.js';
+import logger from '../../../logger.js';
 
 export class PostgresDialect implements Dialect {
   private pool: pg.Pool;

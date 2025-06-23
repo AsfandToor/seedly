@@ -7,6 +7,7 @@
   "bin": {
     "seedly": "./dist/cli/index.js"
   },
+  "type": "module",
   "files": [
     "dist",
     "README.md"
@@ -48,6 +49,7 @@
     "@langchain/core": "^0.3.57",
     "@langchain/google-genai": "^0.2.10",
     "@langchain/langgraph": "^0.3.0",
+    "@langchain/mcp-adapters": "^0.5.2",
     "@modelcontextprotocol/sdk": "^1.12.1",
     "chalk": "^5.4.1",
     "chokidar": "^4.0.3",

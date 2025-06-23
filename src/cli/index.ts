@@ -1,10 +1,10 @@
 import { Command } from 'commander';
-import geminiWithFunctionCalling from '../mcp/client';
+import { Seedly } from '../mcp/client.js';
 
 //to run mysql or postgres use following command in terminal
 /**
  * 
- node dist/src/cli/index.js start \
+ node dist/cli/src/cli/index.js start \
   --dialect postgres \
   --host localhost \
   --port 5432 \
@@ -15,7 +15,7 @@ import geminiWithFunctionCalling from '../mcp/client';
 
   
   To run sqlite use the following
-  node dist/src/cli/index.js start "seed the users table with 5 records" --dialect sqlite --file database.db
+  node dist/cli/src/cli/index.js start "seed the users table with 5 records" --dialect sqlite --file database.db
  */
 
 const program = new Command();
@@ -62,8 +62,8 @@ attachDbOptions(program.command('start'))
   )
   .action(async (prompt, options) => {
     const dbConfig = extractDbConfig(options);
-
-    await geminiWithFunctionCalling(prompt, dbConfig);
+    const seedingAgent = new Seedly({ dbConfig });
+    await seedingAgent.invoke(prompt);
   });
 program.parse(process.argv);
 
