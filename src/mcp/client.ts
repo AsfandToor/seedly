@@ -214,6 +214,7 @@ export class Seedly {
         agentFinalState.messages[
           agentFinalState.messages.length - 1
         ];
+      logger.info(`Agent Response: ${lastMessage.content}`);
       return lastMessage.content as string;
     } catch (error) {
       logger.error('Error invoking MCP agent:', error);
