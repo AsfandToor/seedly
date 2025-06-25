@@ -1,10 +1,10 @@
 import { Command } from 'commander';
-import { Seedly } from '../mcp/client.js';
+import { Seedly } from '../mcp/client';
 
 //to run mysql or postgres use following command in terminal
 /**
  * 
- node dist/cli/src/cli/index.js start \
+ node dist/cli/index.js start \
   --dialect postgres \
   --host localhost \
   --port 5432 \
@@ -15,7 +15,7 @@ import { Seedly } from '../mcp/client.js';
 
   
   To run sqlite use the following
-  node dist/cli/src/cli/index.js start "seed the users table with 5 records" --dialect sqlite --file database.db
+  node dist/cli//index.js start "seed the users table with 5 records" --dialect sqlite --file database.db
  */
 
 const program = new Command();
@@ -63,6 +63,7 @@ attachDbOptions(program.command('start'))
   .action(async (prompt, options) => {
     const dbConfig = extractDbConfig(options);
     const seedingAgent = new Seedly({ dbConfig });
+    await seedingAgent.initialize();
     await seedingAgent.invoke(prompt);
   });
 program.parse(process.argv);

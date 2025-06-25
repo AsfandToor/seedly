@@ -7,13 +7,18 @@ import logger from '../logger.js';
 import { DialectConfig } from '../core/db/dialects/types.js';
 import 'dotenv/config';
 import { loadMcpTools } from '@langchain/mcp-adapters';
+import { DynamicStructuredTool } from '@langchain/core/tools';
 const apiKey = process.env.GOOGLE_API_KEY;
 if (!apiKey) {
   throw new Error(
     'GOOGLE_API_KEY environment variable not found.',
   );
 }
-
+interface McpToolDefinition {
+  name: string;
+  description?: string;
+  inputSchema: Record<string, any>;
+}
 export enum LLMProvider {
   GEMINI = 'gemini',
   OPENAI = 'openai',
@@ -53,8 +58,8 @@ export class Seedly {
     this.model = new ChatGoogleGenerativeAI({
       temperature: this.temperature,
       model: this.modelName,
+      apiKey: apiKey,
     });
-    this.initialize();
   }
 
   // Connects to MCP server and initializes tools
@@ -63,7 +68,7 @@ export class Seedly {
     this.transport = new StdioClientTransport({
       command: 'node',
       args: [
-        './dist/src/mcp/server.js',
+        './dist/mcp/server.js',
         '--db-config',
         dbConfigString,
       ],
@@ -72,55 +77,97 @@ export class Seedly {
       name: 'gemini-mcp-client',
       version: '1.0.0',
     });
-    await this.mcpClient.connect(this.transport);
-    await this.setupTools();
-    this.agent = createReactAgent({
-      llm: this.model,
-      tools: this.tools,
-    });
+    logger.debug('initialized the client with gemini');
+    try {
+      await this.mcpClient.connect(this.transport);
+      logger.debug('connected to the transport');
+      await this.setupTools();
+      logger.debug('setup all the tools');
+      logger.info('Tools:');
+      logger.info(this.tools);
+      this.agent = createReactAgent({
+        llm: this.model,
+        tools: this.tools,
+      });
+    } catch (error) {
+      logger.error(error);
+      throw error;
+    }
   }
 
   // Dynamically fetches tools from MCP server and wraps them as LangChain tools
   private async setupTools() {
     if (!this.mcpClient)
       throw new Error('MCP client not initialized');
-    this.tools = await loadMcpTools(
-      'seeder',
-      this.mcpClient,
-    );
 
-    // logger.info(
-    //   `Available tools: ${tools.map((t: any) => t.name).join(', ')}`,
-    // );
-    // this.tools = tools.map((tool: any) => {
-    //   return {
-    //     name: tool.name,
-    //     description: tool.description,
-    //     // LangChain tool signature
-    //     func: async (input: Record<string, any>) => {
-    //       logger.info(`🔧 MCP tool invoked: ${tool.name}`);
-    //       logger.info(`📥 Args: ${JSON.stringify(input)}`);
-    //       if (!this.mcpClient)
-    //         throw new Error('MCP client not initialized');
-    //       const result = await this.mcpClient.callTool({
-    //         name: tool.name,
-    //         arguments: input,
-    //       });
-    //       // Try to extract text content
-    //       if (
-    //         result &&
-    //         Array.isArray(result.content) &&
-    //         result.content[0] &&
-    //         typeof result.content[0].text === 'string'
-    //       ) {
-    //         return result.content[0].text;
-    //       }
-    //       return JSON.stringify(result);
-    //     },
-    //     // For LangChain compatibility
-    //     args: tool.parameters || {},
-    //   };
-    // });
+    const listedTools = await this.mcpClient.listTools();
+    logger.info(
+      `MCP Server listed tools: ${JSON.stringify(listedTools, null, 2)}`,
+    );
+    logger.info(
+      `Available tools: ${listedTools.tools.map((t: any) => t.name).join(', ')}`,
+    );
+    this.tools = listedTools.tools.map(
+      (toolDefinition: McpToolDefinition) => {
+        const description =
+          toolDefinition.description ||
+          `Tool for ${toolDefinition.name}`;
+        return new DynamicStructuredTool({
+          name: toolDefinition.name,
+          description: description,
+          schema: toolDefinition.inputSchema,
+          func: async (
+            input: Record<string, any>,
+          ): Promise<any> => {
+            logger.info(
+              `🔧 MCP tool invoked: ${toolDefinition.name}`,
+            );
+            logger.info(
+              `📥 Args: ${JSON.stringify(input)}`,
+            );
+
+            if (!this.mcpClient) {
+              throw new Error(
+                'MCP client not initialized during tool execution',
+              );
+            }
+
+            try {
+              const result = await this.mcpClient.callTool({
+                name: toolDefinition.name,
+                arguments: input,
+              });
+
+              if (
+                result &&
+                Array.isArray(result.content) &&
+                result.content.length > 0
+              ) {
+                const textBlock = result.content.find(
+                  (block: any) => block.type === 'text',
+                );
+                if (
+                  textBlock &&
+                  typeof textBlock.text === 'string'
+                ) {
+                  return textBlock.text;
+                }
+                return JSON.stringify(result.content);
+              }
+              return `Tool "${toolDefinition.name}" executed successfully, but returned no content.`;
+            } catch (error: any) {
+              logger.error(
+                `❌ Error calling MCP tool "${toolDefinition.name}":`,
+                error.message,
+              );
+              throw new Error(
+                `Failed to execute tool "${toolDefinition.name}": ${error.message}`,
+              );
+            }
+          },
+        });
+      },
+    );
   }
 
   // Helper to fetch DB schema and return as system context

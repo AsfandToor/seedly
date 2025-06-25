@@ -44,8 +44,11 @@ server.resource('schema', 'schema://main', async (uri) => {
 });
 server.tool(
   'query',
+  'Executes a SQL query against the database and returns the result.',
   {
-    queryString: z.string(),
+    queryString: z
+      .string()
+      .describe('The SQL query string to execute.'),
   },
   async ({ queryString }) => {
     const result = await seedly.query(queryString);
@@ -54,10 +57,20 @@ server.tool(
 );
 server.tool(
   'seed-table',
+  'Generates and inserts fake data into a specified database table.',
   {
-    tableName: z.string(),
-    count: z.number().min(1).max(100),
+    tableName: z
+      .string()
+      .describe('The name of the table to seed data into.'),
+    count: z
+      .number()
+      .min(1)
+      .max(100)
+      .describe(
+        'The number of fake rows to generate and insert (between 1 and 100).',
+      ),
   },
+
   async ({ tableName, count }) => {
     const result = await seedly.seedTool(tableName, count);
     logger.info('JUST BEFORE RETURNING THE RESULT');

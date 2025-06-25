@@ -1,1 +1,1 @@
-export { Seedly } from './mcp/tools.js';
+export { Seedly } from './mcp/tools';

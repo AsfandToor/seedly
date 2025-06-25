@@ -1,6 +1,4 @@
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const pino = require('pino');
+import { pino } from 'pino';
 
 const logger = pino({
   level:

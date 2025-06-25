@@ -7,7 +7,6 @@
   "bin": {
     "seedly": "./dist/cli/index.js"
   },
-  "type": "module",
   "files": [
     "dist",
     "README.md"
@@ -15,7 +14,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -rf dist",
-    "build": "npm run clean && tsc && swc ./src/cli -d dist/cli",
+    "build": "npm run clean && tsc && swc ./src/cli -d dist --strip-leading-paths",
     "build:swc": "npm run clean && swc ./src -d dist",
     "start": "node dist/cli/index.js",
     "dev": "swc src -w -d dist",
