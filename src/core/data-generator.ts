@@ -2,17 +2,33 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Column } from './db/dialects/types.js';
 import 'dotenv/config';
 import logger from '../logger.js';
-const apiKey = process.env.GOOGLE_API_KEY;
-if (!apiKey) {
+import 'mcps-logger/console';
+import OpenAI from 'openai';
+const googleApiKey = process.env.GOOGLE_API_KEY;
+const openAiApiKey = process.env.OPENAI_API_KEY;
+if (!googleApiKey && !openAiApiKey) {
   throw new Error(
-    'GOOGLE_API_KEY environment variable not found.',
+    'API KEY environment variable not found.',
   );
 }
-const googleGenAi = new GoogleGenerativeAI(apiKey);
+let provider: 'openai' | 'gemini';
+let openai: OpenAI | null = null;
+let geminiModel: ReturnType<
+  GoogleGenerativeAI['getGenerativeModel']
+> | null = null;
 
-const model = googleGenAi.getGenerativeModel({
-  model: 'gemini-1.5-flash',
-});
+if (openAiApiKey) {
+  provider = 'openai';
+  openai = new OpenAI({ apiKey: openAiApiKey });
+  console.log('initialized generator for openai');
+} else {
+  provider = 'gemini';
+  const genAI = new GoogleGenerativeAI(googleApiKey!);
+  geminiModel = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+  });
+  console.log('initialized generator for gemini');
+}
 
 export async function generateValueWithLLM(
   column: Column,
@@ -31,20 +47,35 @@ export async function generateValueWithLLM(
   logger.warn('just after the enum if condition');
 
   try {
-    const res = await model.generateContent({
-      contents: [
-        { role: 'user', parts: [{ text: prompt }] },
-      ],
-    });
+    let responseText: string;
 
-    const response = res.response.text().trim();
+    if (provider === 'gemini') {
+      console.log('came inside gemini');
+      const res = await geminiModel!.generateContent({
+        contents: [
+          { role: 'user', parts: [{ text: prompt }] },
+        ],
+      });
+      responseText = res.response.text().trim();
+    } else {
+      console.log('came inside openai');
+      const res = await openai!.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: prompt }],
+      });
+      responseText =
+        res.choices[0].message.content?.trim() || '';
+    }
+
     logger.warn('Data from LLM:');
-    logger.warn(response);
-    //tthe llm when asked to return response in json always returns the data in the form of json block. the word json is written and is enclosed by ```{}```. We have to get rid of them here.
-    const clean = response
+    logger.warn(responseText);
+
+    const clean = responseText
       .replace(/^```json\s*/i, '')
-      .replace(/```$/i, '')
+      .replace(/^```/, '')
+      .replace(/```$/, '')
       .trim();
+
     const parsed = JSON.parse(clean);
     if (!Array.isArray(parsed)) {
       throw new Error('Not an array');
@@ -53,9 +84,9 @@ export async function generateValueWithLLM(
     return parsed;
   } catch (err) {
     logger.error(
-      'Error getting the response data from llm',
+      'Error getting the response data from LLM',
     );
-    logger.error(err);
+    console.error(err);
     throw new Error(
       `Invalid LLM response for column ${column.name}`,
     );

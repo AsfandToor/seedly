@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { Seedly } from '../mcp/client';
+import { LLMProvider, Seedly } from '../mcp/client';
 
 //to run mysql or postgres use following command in terminal
 /**
@@ -62,7 +62,9 @@ attachDbOptions(program.command('start'))
   )
   .action(async (prompt, options) => {
     const dbConfig = extractDbConfig(options);
-    const seedingAgent = new Seedly({ dbConfig });
+    const seedingAgent = new Seedly({
+      dbConfig,
+    });
     await seedingAgent.initialize();
     await seedingAgent.invoke(prompt);
   });

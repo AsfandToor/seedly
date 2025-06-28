@@ -5,25 +5,35 @@ import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import logger from '../logger.js';
 import { DialectConfig } from '../core/db/dialects/types.js';
+import { ChatOpenAI } from '@langchain/openai';
 import 'dotenv/config';
 import { loadMcpTools } from '@langchain/mcp-adapters';
 import { DynamicStructuredTool } from '@langchain/core/tools';
-const apiKey = process.env.GOOGLE_API_KEY;
-if (!apiKey) {
-  throw new Error(
-    'GOOGLE_API_KEY environment variable not found.',
-  );
-}
-interface McpToolDefinition {
-  name: string;
-  description?: string;
-  inputSchema: Record<string, any>;
-}
 export enum LLMProvider {
   GEMINI = 'gemini',
   OPENAI = 'openai',
   ANTHROPIC = 'anthropic',
   DEEPSEEK = 'deepseek',
+}
+const googleApiKey = process.env.GOOGLE_API_KEY;
+const openAiApiKey = process.env.OPENAI_API_KEY;
+let apiKey: string | undefined;
+let provider: LLMProvider;
+if (googleApiKey) {
+  apiKey = googleApiKey;
+  provider = LLMProvider.GEMINI;
+} else if (openAiApiKey) {
+  apiKey = openAiApiKey;
+  provider = LLMProvider.OPENAI;
+} else
+  throw new Error(
+    'API Key environment variable not found.',
+  );
+
+interface McpToolDefinition {
+  name: string;
+  description?: string;
+  inputSchema: Record<string, any>;
 }
 
 interface SeedlyConfig {
@@ -35,7 +45,10 @@ interface SeedlyConfig {
 
 export class Seedly {
   private agent?: ReturnType<typeof createReactAgent>;
-  private model: ChatGoogleGenerativeAI;
+  private model:
+    | ChatGoogleGenerativeAI
+    | ChatOpenAI
+    | undefined;
   private tools: any[] = [];
   private mcpClient?: Client;
   private transport?: StdioClientTransport;
@@ -46,7 +59,7 @@ export class Seedly {
 
   constructor({
     dbConfig,
-    modelProvider = LLMProvider.GEMINI,
+    modelProvider = provider,
     model = 'gemini-2.0-flash',
     temperature = 0,
   }: SeedlyConfig) {
@@ -54,12 +67,27 @@ export class Seedly {
     this.modelProvider = modelProvider;
     this.modelName = model;
     this.temperature = temperature;
-    // Only Gemini supported for now
-    this.model = new ChatGoogleGenerativeAI({
-      temperature: this.temperature,
-      model: this.modelName,
-      apiKey: apiKey,
-    });
+    logger.debug(
+      `the provider used is ${this.modelProvider}`,
+    );
+    switch (this.modelProvider) {
+      case LLMProvider.OPENAI:
+        logger.warn('came inside the openai case');
+        this.model = new ChatOpenAI({
+          temperature: this.temperature,
+          model: 'gpt-3.5-turbo',
+          apiKey: apiKey,
+        });
+        break;
+      case LLMProvider.GEMINI:
+        logger.warn('came inside the gemini case');
+        this.model = new ChatGoogleGenerativeAI({
+          temperature: this.temperature,
+          model: this.modelName,
+          apiKey: apiKey,
+        });
+        break;
+    }
   }
 
   // Connects to MCP server and initializes tools
@@ -74,11 +102,14 @@ export class Seedly {
       ],
     });
     this.mcpClient = new Client({
-      name: 'gemini-mcp-client',
+      name: 'seedly-mcp-client',
       version: '1.0.0',
     });
-    logger.debug('initialized the client with gemini');
+    logger.debug('initialized the client');
     try {
+      if (!this.model) {
+        throw Error('No llm could be initialized.');
+      }
       await this.mcpClient.connect(this.transport);
       logger.debug('connected to the transport');
       await this.setupTools();
@@ -252,27 +283,6 @@ export class Seedly {
       );
       throw error;
     }
-  }
-
-  // Add a new tool at runtime
-  addTool(tool: any) {
-    this.tools.push(tool);
-    if (this.agent) {
-      this.agent = createReactAgent({
-        llm: this.model,
-        tools: this.tools,
-      });
-    }
-  }
-
-  // Get the current configuration
-  getConfig() {
-    return {
-      model: this.model.model,
-      temperature: this.model.temperature,
-      modelProvider: this.modelProvider,
-      dbConfig: this.dbConfig,
-    };
   }
 
   // Graceful shutdown

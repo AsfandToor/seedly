@@ -5,7 +5,7 @@ import { z } from 'zod';
 import logger from '../logger.js';
 import { Seedly } from './tools.js';
 //add the line below to turn on debug mode and send logs to mcps-logger
-// import 'mcps-logger/console';
+import 'mcps-logger/console';
 const server = new McpServer({
   name: 'seeder',
   version: '1.0.0',

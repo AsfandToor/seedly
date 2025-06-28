@@ -5,6 +5,7 @@ import {
   DialectConfig,
 } from '../core/db/dialects/types.js';
 import logger from '../logger.js';
+import 'mcps-logger/console';
 
 export class Seedly {
   private dialect;
@@ -117,6 +118,10 @@ export class Seedly {
         ],
       };
     } catch (err) {
+      console.log(
+        'the error from the tools file is ',
+        (err as Error).message,
+      );
       return {
         content: [
           {
