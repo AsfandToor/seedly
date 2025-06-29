@@ -44,7 +44,7 @@ server.resource('schema', 'schema://main', async (uri) => {
 });
 server.tool(
   'query',
-  'Executes a SQL query against the database and returns the result.',
+  'Executes a SQL/NoSQL query against the database and returns the result.',
   {
     queryString: z
       .string()
@@ -57,17 +57,19 @@ server.tool(
 );
 server.tool(
   'seed-table',
-  'Generates and inserts fake data into a specified database table.',
+  'Generates and inserts fake data into a specified database table/collection.',
   {
     tableName: z
       .string()
-      .describe('The name of the table to seed data into.'),
+      .describe(
+        'The name of the table/collection to seed data into.',
+      ),
     count: z
       .number()
       .min(1)
       .max(100)
       .describe(
-        'The number of fake rows to generate and insert (between 1 and 100).',
+        'The number of fake rows/documents to generate and insert (between 1 and 100).',
       ),
   },
 

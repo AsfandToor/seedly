@@ -2,9 +2,6 @@
 
 An intelligent NPM package that leverages AI to automatically understand your database schema and generate meaningful fake data for development and testing purposes.
 
-[![npm version](https://img.shields.io/npm/v/seeding-agent.svg)](https://www.npmjs.com/package/seeding-agent)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
 ## Features 🚀
 
 - **AI-Powered Schema Analysis**: Automatically understands your database structure using MCP (Model-Controller-Persistence) server concepts
@@ -17,131 +14,123 @@ An intelligent NPM package that leverages AI to automatically understand your da
 ## Installation 📦
 
 ```bash
-npm install seeding-agent
+npm install @codeacme/seedly
 # or
-yarn add seeding-agent
+yarn add @codeacme/seedly
 ```
 
 ## Quick Start 🏃‍♂️
 
 1. Initialize Seedly in your project:
 
-```javascript
-const Seedly = require('@codeacme/seedly');
+```ts
+import { Seedly } from '@codeacme/seedly';
 
 const agent = new Seedly({
-  database: {
-    type: 'postgres', // or 'mysql', 'mongodb'
-    host: 'localhost',
-    port: 5432,
-    username: 'your_username',
-    password: 'your_password',
-    database: 'your_database'
-  }
+  type: 'postgres', // or 'mysql', 'sqlite'
+  host: 'localhost',
+  port: 5432,
+  user: 'your_username',
+  password: 'your_password',
+  database: 'your_database',
+});
+//OR
+const mongoDBAgent = new Seedly({
+  type: 'mongodb',
+  uri: 'mongodb://whole_uri',
+  database: 'your_database',
+  modelsDir: './path-to-modelDIR', //use for a whole models folder
+  singleSchemaPath: './path-to-single-schema-file', //provide the schema of only the collection that you are going to seed in the next step
 });
 ```
 
-2. Let the agent analyze your schema:
+2. Seed a table:
 
-```javascript
-await agent.analyzeSchema();
+```ts
+await agent.seedTool('users', 100);
 ```
 
-3. Generate and seed data:
+3. Example with Express:
 
-```javascript
-await agent.seed({
-  recordsPerTable: 100, // number of records to generate per table
-  customRules: {} // optional custom rules for specific fields
+```ts
+import express from 'express';
+import { Seedly } from '@codeacme/seedly';
+
+const app = express();
+const port = 3000;
+
+app.get('/seed', async (req, res) => {
+  const agent = new Seedly({
+    type: 'sqlite',
+    file: './database.db',
+  });
+
+  try {
+    await agent.seedTool('orders', 10);
+  } catch (error) {
+    console.error('Error during seeding:', error);
+  }
+
+  res.send('Seeding started!');
+});
+
+app.listen(port, () => {
+  console.log(
+    `Test app listening at http://localhost:${port}`,
+  );
 });
 ```
 
 ## CLI Usage 💻
 
 ```bash
-# Initialize seedly configuration
-npx seedly init
+# SQLite
+node dist/cli/index.js start "Seed the users table with 5 records" \
+  --dialect sqlite \
+  --file ./database.db
 
-# Analyze schema and generate seed data
-npx seedly seed --records 100
+# PostgreSQL
+node dist/cli/index.js start "Seed the users table with 10 rows" \
+  --dialect postgres \
+  --host localhost \
+  --port 5432 \
+  --user postgres \
+  --password your_password \
+  --database my_database
 
-# Generate data for specific tables
-npx seedly seed --tables users,products --records 50
+# MongoDB (with model directory)
+node dist/cli/index.js start "Seed the users collection with 10 documents" \
+  --dialect mongodb \
+  --uri mongodb://localhost:27017 \
+  --database test \
+  --models-dir ./models
+
+# MongoDB (with single schema file)
+node dist/cli/index.js start "Seed the logs collection with 5 entries" \
+  --dialect mongodb \
+  --uri mongodb://localhost:27017 \
+  --database test \
+  --single-schema ./models/logs.js
 ```
 
-## Configuration ⚙️
+> 📌 **Note:** If you're using MongoDB, your Mongoose model files must be JavaScript (`.js`) files, not TypeScript (`.ts`) unless they're compiled before use.
 
-Create a `seedly.config.js` file in your project root:
+> 🧠 **When to use what**:
+>
+> - Use `--models-dir` if you have multiple `.js` model files in a directory.
+> - Use `--single-schema` if you want to provide one `.js` model file manually.
+> - If neither is provided, Seedly will attempt to infer the schema from existing MongoDB documents.
 
-```javascript
-module.exports = {
-  database: {
-    type: 'postgres',
-    connection: {
-      // your database connection details
-    }
-  },
-  seeding: {
-    defaultRecordsPerTable: 50,
-    customRules: {
-      // Define custom rules for specific fields
-      'users.email': 'email',
-      'products.price': 'price.between(10,1000)'
-    }
-  }
-};
+## Environment Variable 🔑
+
+You must set either `GOOGLE_API_KEY` or `OPENAI_API_KEY` in your environment for AI-powered data generation:
+
+```bash
+export GOOGLE_API_KEY=your-google-api-key
+# or
+export OPENAI_API_KEY=your-openai-api-key
 ```
-
-## Custom Data Rules 📝
-
-You can define custom rules for specific fields:
-
-```javascript
-await agent.seed({
-  customRules: {
-    'users.age': () => Math.floor(Math.random() * 50) + 18,
-    'products.category': ['Electronics', 'Books', 'Clothing'],
-    'orders.status': {
-      type: 'enum',
-      values: ['pending', 'processing', 'completed']
-    }
-  }
-});
-```
-
-## API Reference 📚
-
-### Seedly Class
-
-- `constructor(config)`: Initialize the agent with configuration
-- `analyzeSchema()`: Analyze database schema
-- `seed(options)`: Generate and insert seed data
-- `exportSchema()`: Export the analyzed schema
-- `importSchema(schema)`: Import a previously analyzed schema
-
-### Configuration Options
-
-- `database`: Database connection details
-- `seeding`: Seeding configuration and rules
-- `templates`: Custom templates for data generation
-- `logging`: Logging configuration
-
-## Contributing 🤝
-
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
 
 ## License 📄
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support 💪
-
-If you find this package helpful, please consider giving it a star ⭐️ on GitHub!
-
-For issues, feature requests, or questions, please use the [GitHub Issues](https://github.com/yourusername/seeding-agent/issues) page.
+MIT License © CodeAcme

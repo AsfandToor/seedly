@@ -1,23 +1,79 @@
 import path from 'path';
 import { Column } from '../dialects/types.js';
 import mongoose, { SchemaType } from 'mongoose';
-
+import fs from 'fs/promises';
+import 'mcps-logger';
 export async function loadSchemaFromMongoose(
   modelPath: string,
   collectionName: string,
 ): Promise<Column[]> {
-  const absPath = path.resolve(modelPath);
-  const imported = await import(absPath);
-  const modelExport =
-    imported.default || imported[collectionName];
+  let absPath = path.resolve(modelPath);
 
-  if (!modelExport || !modelExport.schema) {
+  // If it's a directory, resolve to <collectionName>.js/.ts
+  const stat = await fs.stat(absPath);
+  if (stat.isDirectory()) {
+    let found = false;
+    const jsPath = path.join(
+      absPath,
+      `${collectionName}.js`,
+    );
+    const tsPath = path.join(
+      absPath,
+      `${collectionName}.ts`,
+    );
+    console.log('the ts path is ', tsPath);
+    try {
+      await fs.access(jsPath);
+      absPath = jsPath;
+      found = true;
+    } catch (e: any) {
+      console.error(e.message);
+    }
+    if (!found) {
+      try {
+        await fs.access(tsPath);
+        absPath = tsPath;
+        found = true;
+      } catch (e: any) {
+        console.error(e.message);
+      }
+    }
+    if (!found) {
+      throw new Error(
+        `No schema file found for collection "${collectionName}" in "${modelPath}"`,
+      );
+    }
+  }
+  if (absPath.endsWith('.ts')) {
     throw new Error(
-      `Could not find Mongoose schema for "${collectionName}" in "${modelPath}"`,
+      `Cannot import TypeScript file at runtime: "${absPath}".\n` +
+        `Please compile it to .js using tsc or a build tool first.`,
     );
   }
 
-  const schemaPaths = modelExport.schema.paths as Record<
+  const imported = await import(absPath);
+
+  type MaybeMongooseModel = {
+    schema?: {
+      paths?: Record<string, SchemaType>;
+    };
+  };
+
+  const possibleExports = Object.values(
+    imported,
+  ) as MaybeMongooseModel[];
+
+  const matched = possibleExports.find(
+    (exp) => exp?.schema?.paths,
+  );
+
+  if (!matched || !matched.schema) {
+    throw new Error(
+      `Could not find Mongoose schema for "${collectionName}" in "${absPath}"`,
+    );
+  }
+
+  const schemaPaths = matched.schema.paths as Record<
     string,
     SchemaType
   >;

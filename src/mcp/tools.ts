@@ -9,8 +9,11 @@ import 'mcps-logger/console';
 
 export class Seedly {
   private dialect;
+  private dialectType: string;
+
   constructor(config: DialectConfig) {
     this.dialect = getDialect(config);
+    this.dialectType = config.type;
   }
   //query tool
   async schemaResource(uri: any): Promise<any> {
@@ -73,8 +76,9 @@ export class Seedly {
       logger.info(
         `Tool 'seed-table' called for table: ${tableName}, count: ${count}`,
       );
-      const columns =
-        await this.dialect.getColumns(tableName);
+      const columns = await this.dialect.getColumns(
+        tableName,
+      );
       logger.warn(columns);
       if (columns.length === 0) {
         throw new Error(
@@ -93,6 +97,7 @@ export class Seedly {
         const values = await generateValueWithLLM(
           col,
           count,
+          this.dialectType === 'mongodb' ? 'nosql' : 'sql',
         );
         if (values.length < count) {
           throw new Error(

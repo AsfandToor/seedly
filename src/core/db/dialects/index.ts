@@ -30,7 +30,8 @@ export function getDialect(config: DialectConfig) {
     return new MongoDBDialect(
       config.uri,
       config.database,
-      config.modelPath,
+      config.modelsDir, // renamed from modelPath
+      config.singleSchemaPath,
     );
   }
 

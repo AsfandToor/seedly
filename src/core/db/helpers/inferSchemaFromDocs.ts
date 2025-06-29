@@ -39,7 +39,7 @@ export function inferSchemaFromDocs(
     if (typeArray.length === 1) {
       finalType = typeArray[0];
     } else {
-      finalType = typeArray.join('|'); // e.g., "string|null"
+      finalType = typeArray.join('|');
     }
 
     result.push({

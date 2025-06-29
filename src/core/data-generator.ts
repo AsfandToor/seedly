@@ -33,8 +33,15 @@ if (openAiApiKey) {
 export async function generateValueWithLLM(
   column: Column,
   count: number,
+  dialectType: 'sql' | 'nosql' = 'sql',
 ) {
-  let prompt = `Generate ${count} fake values for a SQL column named "${column.name}" of type "${column.type}". Return the data as a JSON array, nothing else. Each value should be realistic.`;
+  let promptPrefix =
+    dialectType === 'sql'
+      ? `a SQL column`
+      : `a NoSQL document field`;
+
+  let prompt = `Generate ${count} fake values for ${promptPrefix} named "${column.name}" of type "${column.type}". Return the data as a JSON array, nothing else. Each value should be realistic.`;
+
   //handling enums
   if (column.enumValues && column.enumValues.length > 0) {
     logger.warn('enum encountered');

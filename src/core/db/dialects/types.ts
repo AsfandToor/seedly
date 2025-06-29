@@ -34,5 +34,6 @@ export type DialectConfig =
       type: 'mongodb';
       uri: string;
       database: string;
-      modelPath?: string; // optional: for mongoose-based schema loading
+      modelsDir?: string;
+      singleSchemaPath?: string;
     };

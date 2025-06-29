@@ -133,10 +133,16 @@ export class Seedly {
 
     const listedTools = await this.mcpClient.listTools();
     logger.info(
-      `MCP Server listed tools: ${JSON.stringify(listedTools, null, 2)}`,
+      `MCP Server listed tools: ${JSON.stringify(
+        listedTools,
+        null,
+        2,
+      )}`,
     );
     logger.info(
-      `Available tools: ${listedTools.tools.map((t: any) => t.name).join(', ')}`,
+      `Available tools: ${listedTools.tools
+        .map((t: any) => t.name)
+        .join(', ')}`,
     );
     this.tools = listedTools.tools.map(
       (toolDefinition: McpToolDefinition) => {
@@ -216,7 +222,7 @@ export class Seedly {
         ? schemaResult.contents[0].text
         : '';
     return (
-      'The following is the schema of the SQL database you are interacting with:\n\n' +
+      'You are a seeding agent. You are supposed to seed the tables/collections provided to you in the prompt. If you encounter an error that you cannot solve using the available tools then make sure you mention it in your response.The following is the schema of the SQL/NoSQL database you are interacting with:\n\n' +
       schemaText
     );
   }
