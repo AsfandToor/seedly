@@ -1,21 +1,37 @@
+import 'esbuild-register/dist/node';
 import { Command } from 'commander';
-import geminiWithFunctionCalling from '../mcp/client';
+import { Seedly } from '../mcp/client';
 
-//to run mysql or postgres use following command in terminal
+// Usage examples:
 /**
- * 
- node dist/src/cli/index.js start \
-  --dialect postgres \
-  --host localhost \
-  --port 5432 \
-  --user postgres \
-  --password "" \
-  --database gen_backend_v2_development \
-  "seed the users table with 5 records"
-
-  
-  To run sqlite use the following
-  node dist/src/cli/index.js start "seed the users table with 5 records" --dialect sqlite --file database.db
+ * Postgres:
+ * node dist/cli/index.js start \
+ *   --dialect postgres \
+ *   --host localhost \
+ *   --port 5432 \
+ *   --user postgres \
+ *   --password "" \
+ *   --database gen_backend_v2_development \
+ *   "seed the users table with 5 records"
+ *
+ * MongoDB (with optional model dir):
+ * node dist/cli/index.js start "Seed the users collection with 10 records" \
+ *   --dialect mongodb \
+ *   --uri mongodb://localhost:27017 \
+ *   --database test \
+ *   --models-dir ./models
+ *
+ * MongoDB (with --single-schema for new collections):
+ * node dist/cli/index.js start "Seed the logs collection with 5 entries" \
+ *   --dialect mongodb \
+ *   --uri mongodb://localhost:27017 \
+ *   --database test \
+ *   --single-schema ./schemas/logs.js
+ *
+ * SQLite:
+ * node dist/cli/index.js start "seed the users table with 5 records" \
+ *   --dialect sqlite \
+ *   --file database.db
  */
 
 const program = new Command();
@@ -23,16 +39,15 @@ const program = new Command();
 program
   .name('seedly')
   .description(
-    'An AI based Seeding Agent, that will use MCP protocols to understand your DB schema and seed fake data according to it.',
+    'An AI-based Seeding Agent that uses MCP to understand DB schemas and seed fake data.',
   )
-  .version('1.0.0')
-  .option('-h, --help', 'Show help');
+  .version('1.0.0');
 
 function attachDbOptions(cmd: Command) {
   return cmd
     .option(
       '--dialect <dialect>',
-      'Database dialect (sqlite, postgres, mysql)',
+      'Database dialect (sqlite, postgres, mysql, mongodb)',
       'sqlite',
     )
     .option('--file <path>', 'SQLite file path')
@@ -41,6 +56,18 @@ function attachDbOptions(cmd: Command) {
     .option('--user <user>', 'DB user')
     .option('--password <password>', 'DB password')
     .option('--database <name>', 'Database name')
+    .option(
+      '--uri <uri>',
+      'MongoDB connection string (e.g., mongodb://localhost:27017)',
+    )
+    .option(
+      '--models-dir <path>',
+      'Path to Mongoose models directory (for enhancing existing collections)',
+    )
+    .option(
+      '--single-schema <path>',
+      'Path to a single schema file for a new collection',
+    )
     .argument('<prompt>', 'Your natural language query');
 }
 
@@ -53,28 +80,23 @@ function extractDbConfig(options: any) {
     user: options.user,
     password: options.password,
     database: options.database,
+    uri: options.uri,
+    modelPath: options.modelsDir,
+    singleSchemaPath: options.singleSchema,
   };
 }
 
 attachDbOptions(program.command('start'))
   .description(
-    'Start the MCP server to listen for seeding and query tasks',
+    'Start the MCP seeding agent and run the prompt',
   )
   .action(async (prompt, options) => {
     const dbConfig = extractDbConfig(options);
-
-    await geminiWithFunctionCalling(prompt, dbConfig);
+    const seedingAgent = new Seedly({ dbConfig });
+    await seedingAgent.initialize();
+    await seedingAgent.invoke(prompt);
+    await seedingAgent.close();
+    process.exit(0);
   });
+
 program.parse(process.argv);
-// Start MCP Server
-// program.option('-s, --start', 'Start the MCP server');
-
-// program.parse(process.argv);
-
-// const options = program.opts();
-
-// if (options.start) {
-//   console.log('Starting MCP server...');
-//   const server = new SeederMCPServer();
-//   server.start();
-// }

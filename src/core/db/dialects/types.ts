@@ -29,4 +29,11 @@ export type DialectConfig =
       user: string;
       password: string;
       database: string;
+    }
+  | {
+      type: 'mongodb';
+      uri: string;
+      database: string;
+      modelsDir?: string;
+      singleSchemaPath?: string;
     };

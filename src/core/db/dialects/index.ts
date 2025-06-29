@@ -1,8 +1,9 @@
-import { DialectConfig } from './types';
-import { SQLiteDialect } from './sqlite';
-import { PostgresDialect } from './postgres';
-import { MysqlDialect } from './mysql';
-import logger from '../../../logger';
+import { DialectConfig } from './types.js';
+import { SQLiteDialect } from './sqlite.js';
+import { PostgresDialect } from './postgres.js';
+import { MysqlDialect } from './mysql.js';
+import logger from '../../../logger.js';
+import { MongoDBDialect } from './mongodb.js';
 
 export function getDialect(config: DialectConfig) {
   logger.warn('The file is coming up next');
@@ -25,6 +26,13 @@ export function getDialect(config: DialectConfig) {
       password: config.password,
       database: config.database,
     });
+  } else if (config.type === 'mongodb') {
+    return new MongoDBDialect(
+      config.uri,
+      config.database,
+      config.modelsDir, // renamed from modelPath
+      config.singleSchemaPath,
+    );
   }
 
   throw new Error(`Unsupported dialect: ${config.type}`);

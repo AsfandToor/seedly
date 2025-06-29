@@ -1,12 +1,11 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { generateValueWithLLM } from '../core/data-generator';
-import { getDialect } from '../core/db/dialects';
-import logger from '../logger';
-import { Seedly } from './tools';
+
+import logger from '../logger.js';
+import { Seedly } from './tools.js';
 //add the line below to turn on debug mode and send logs to mcps-logger
-// import 'mcps-logger/console';
+import 'mcps-logger/console';
 const server = new McpServer({
   name: 'seeder',
   version: '1.0.0',
@@ -45,8 +44,11 @@ server.resource('schema', 'schema://main', async (uri) => {
 });
 server.tool(
   'query',
+  'Executes a SQL/NoSQL query against the database and returns the result.',
   {
-    queryString: z.string(),
+    queryString: z
+      .string()
+      .describe('The SQL query string to execute.'),
   },
   async ({ queryString }) => {
     const result = await seedly.query(queryString);
@@ -55,10 +57,22 @@ server.tool(
 );
 server.tool(
   'seed-table',
+  'Generates and inserts fake data into a specified database table/collection.',
   {
-    tableName: z.string(),
-    count: z.number().min(1).max(100),
+    tableName: z
+      .string()
+      .describe(
+        'The name of the table/collection to seed data into.',
+      ),
+    count: z
+      .number()
+      .min(1)
+      .max(100)
+      .describe(
+        'The number of fake rows/documents to generate and insert (between 1 and 100).',
+      ),
   },
+
   async ({ tableName, count }) => {
     const result = await seedly.seedTool(tableName, count);
     logger.info('JUST BEFORE RETURNING THE RESULT');

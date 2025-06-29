@@ -1,5 +1,5 @@
 import mysql from 'mysql2/promise';
-import { Column, Dialect } from './types';
+import { Column, Dialect } from './types.js';
 
 export class MysqlDialect implements Dialect {
   private pool: mysql.Pool;

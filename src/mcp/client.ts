@@ -1,184 +1,304 @@
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import {
-  SchemaType,
-  GoogleGenerativeAI,
-} from '@google/generative-ai';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import logger from '../logger';
-import { DialectConfig } from '@/core/db/dialects/types';
+import { HumanMessage } from '@langchain/core/messages';
+import { createReactAgent } from '@langchain/langgraph/prebuilt';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import logger from '../logger.js';
+import { DialectConfig } from '../core/db/dialects/types.js';
+import { ChatOpenAI } from '@langchain/openai';
 import 'dotenv/config';
-const apiKey = process.env.GOOGLE_API_KEY;
-if (!apiKey) {
+import { loadMcpTools } from '@langchain/mcp-adapters';
+import { DynamicStructuredTool } from '@langchain/core/tools';
+export enum LLMProvider {
+  GEMINI = 'gemini',
+  OPENAI = 'openai',
+  ANTHROPIC = 'anthropic',
+  DEEPSEEK = 'deepseek',
+}
+const googleApiKey = process.env.GOOGLE_API_KEY;
+const openAiApiKey = process.env.OPENAI_API_KEY;
+let apiKey: string | undefined;
+let provider: LLMProvider;
+if (googleApiKey) {
+  apiKey = googleApiKey;
+  provider = LLMProvider.GEMINI;
+} else if (openAiApiKey) {
+  apiKey = openAiApiKey;
+  provider = LLMProvider.OPENAI;
+} else
   throw new Error(
-    'GOOGLE_API_KEY environment variable not found.',
-  );
-}
-// Init Google Gemini
-const googleGenAi = new GoogleGenerativeAI(apiKey);
-
-// MCP Client Setup
-async function createMcpClient(dbConfig: DialectConfig) {
-  const dbConfigString = JSON.stringify(dbConfig);
-  const transport = new StdioClientTransport({
-    command: 'node',
-    args: [
-      './dist/src/mcp/server.js',
-      '--db-config',
-      dbConfigString,
-    ], // points to your Seeder MCP server
-  });
-
-  const client = new Client(
-    { name: 'gemini-mcp-client', version: '1.0.0' },
-    { capabilities: { tools: {} } },
+    'API Key environment variable not found.',
   );
 
-  await client.connect(transport);
-  return { client, transport };
+interface McpToolDefinition {
+  name: string;
+  description?: string;
+  inputSchema: Record<string, any>;
 }
 
-// Gemini Function-Calling Demo
-async function geminiWithFunctionCalling(
-  prompt: string,
-  dbConfig: any,
-) {
-  logger.info(
-    '🤖 Gemini AI with Seeder MCP Tool Function Calling',
-  );
+interface SeedlyConfig {
+  dbConfig: DialectConfig;
+  modelProvider?: LLMProvider;
+  model?: string;
+  temperature?: number;
+}
 
-  const { client, transport } =
-    await createMcpClient(dbConfig);
+export class Seedly {
+  private agent?: ReturnType<typeof createReactAgent>;
+  private model:
+    | ChatGoogleGenerativeAI
+    | ChatOpenAI
+    | undefined;
+  private tools: any[] = [];
+  private mcpClient?: Client;
+  private transport?: StdioClientTransport;
+  private dbConfig: DialectConfig;
+  private modelProvider: LLMProvider;
+  private modelName: string;
+  private temperature: number;
 
-  try {
-    // Register tools
-    const { tools } = await client.listTools();
-    logger.info(
-      `Available tools: ${tools.map((t) => t.name).join(', ')}`,
+  constructor({
+    dbConfig,
+    modelProvider = provider,
+    model = 'gemini-2.0-flash',
+    temperature = 0,
+  }: SeedlyConfig) {
+    this.dbConfig = dbConfig;
+    this.modelProvider = modelProvider;
+    this.modelName = model;
+    this.temperature = temperature;
+    logger.debug(
+      `the provider used is ${this.modelProvider}`,
     );
+    switch (this.modelProvider) {
+      case LLMProvider.OPENAI:
+        logger.warn('came inside the openai case');
+        this.model = new ChatOpenAI({
+          temperature: this.temperature,
+          model: 'gpt-3.5-turbo',
+          apiKey: apiKey,
+        });
+        break;
+      case LLMProvider.GEMINI:
+        logger.warn('came inside the gemini case');
+        this.model = new ChatGoogleGenerativeAI({
+          temperature: this.temperature,
+          model: this.modelName,
+          apiKey: apiKey,
+        });
+        break;
+    }
+  }
 
-    // Configure Gemini with MCP tools
-    const model = googleGenAi.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      tools: [
-        {
-          functionDeclarations: [
-            {
-              name: 'seed-table',
-              description:
-                'Insert fake rows into a table based on its schema',
-              parameters: {
-                type: SchemaType.OBJECT,
-                properties: {
-                  tableName: { type: SchemaType.STRING },
-                  count: { type: SchemaType.NUMBER },
-                },
-                required: ['tableName', 'count'],
-              },
-            },
-            {
-              name: 'query',
-              description:
-                'Run an SQL query on the database.',
-              parameters: {
-                type: SchemaType.OBJECT,
-                properties: {
-                  sql: {
-                    type: SchemaType.STRING,
-                    description: 'The SQL query to run.',
-                  },
-                },
-                required: ['sql'],
-              },
-            },
-          ],
-        },
+  // Connects to MCP server and initializes tools
+  async initialize() {
+    const dbConfigString = JSON.stringify(this.dbConfig);
+    this.transport = new StdioClientTransport({
+      command: 'node',
+      args: [
+        './dist/mcp/server.js',
+        '--db-config',
+        dbConfigString,
       ],
     });
-
-    // Handles Gemini's function call requests
-    async function handleFunctionCall(functionCall: any) {
-      const { name, args } = functionCall;
-      logger.info(`🔧 Gemini requested: ${name}`);
-      logger.info(`📥 Args: ${JSON.stringify(args)}`);
-
-      const result = await client.callTool({
-        name,
-        arguments: args,
+    this.mcpClient = new Client({
+      name: 'seedly-mcp-client',
+      version: '1.0.0',
+    });
+    logger.debug('initialized the client');
+    try {
+      if (!this.model) {
+        throw Error('No llm could be initialized.');
+      }
+      await this.mcpClient.connect(this.transport);
+      logger.debug('connected to the transport');
+      await this.setupTools();
+      logger.debug('setup all the tools');
+      logger.info('Tools:');
+      logger.info(this.tools);
+      this.agent = createReactAgent({
+        llm: this.model,
+        tools: this.tools,
       });
-
-      return (result as any).content[0].text;
+    } catch (error) {
+      logger.error(error);
+      throw error;
     }
+  }
 
-    // Process a user query
-    async function processQuery(userQuery: string) {
-      logger.info(`\n🧠 User: "${userQuery}"`);
-      const schemaResult = await client.readResource({
-        uri: 'schema://main',
-      });
-      const schemaText = schemaResult.contents[0].text;
-      const systemContext = [
+  // Dynamically fetches tools from MCP server and wraps them as LangChain tools
+  private async setupTools() {
+    if (!this.mcpClient)
+      throw new Error('MCP client not initialized');
+
+    const listedTools = await this.mcpClient.listTools();
+    logger.info(
+      `MCP Server listed tools: ${JSON.stringify(
+        listedTools,
+        null,
+        2,
+      )}`,
+    );
+    logger.info(
+      `Available tools: ${listedTools.tools
+        .map((t: any) => t.name)
+        .join(', ')}`,
+    );
+    this.tools = listedTools.tools.map(
+      (toolDefinition: McpToolDefinition) => {
+        const description =
+          toolDefinition.description ||
+          `Tool for ${toolDefinition.name}`;
+        return new DynamicStructuredTool({
+          name: toolDefinition.name,
+          description: description,
+          schema: toolDefinition.inputSchema,
+          func: async (
+            input: Record<string, any>,
+          ): Promise<any> => {
+            logger.info(
+              `🔧 MCP tool invoked: ${toolDefinition.name}`,
+            );
+            logger.info(
+              `📥 Args: ${JSON.stringify(input)}`,
+            );
+
+            if (!this.mcpClient) {
+              throw new Error(
+                'MCP client not initialized during tool execution',
+              );
+            }
+
+            try {
+              const result = await this.mcpClient.callTool({
+                name: toolDefinition.name,
+                arguments: input,
+              });
+
+              if (
+                result &&
+                Array.isArray(result.content) &&
+                result.content.length > 0
+              ) {
+                const textBlock = result.content.find(
+                  (block: any) => block.type === 'text',
+                );
+                if (
+                  textBlock &&
+                  typeof textBlock.text === 'string'
+                ) {
+                  return textBlock.text;
+                }
+                return JSON.stringify(result.content);
+              }
+              return `Tool "${toolDefinition.name}" executed successfully, but returned no content.`;
+            } catch (error: any) {
+              logger.error(
+                `❌ Error calling MCP tool "${toolDefinition.name}":`,
+                error.message,
+              );
+              throw new Error(
+                `Failed to execute tool "${toolDefinition.name}": ${error.message}`,
+              );
+            }
+          },
+        });
+      },
+    );
+  }
+
+  // Helper to fetch DB schema and return as system context
+  private async getSchemaContext() {
+    if (!this.mcpClient)
+      throw new Error('MCP client not initialized');
+    const schemaResult = await this.mcpClient.readResource({
+      uri: 'schema://main',
+    });
+    const schemaText =
+      schemaResult.contents &&
+      Array.isArray(schemaResult.contents) &&
+      schemaResult.contents[0] &&
+      typeof schemaResult.contents[0].text === 'string'
+        ? schemaResult.contents[0].text
+        : '';
+    return (
+      'You are a seeding agent. You are supposed to seed the tables/collections provided to you in the prompt. If you encounter an error that you cannot solve using the available tools then make sure you mention it in your response.The following is the schema of the SQL/NoSQL database you are interacting with:\n\n' +
+      schemaText
+    );
+  }
+
+  // Main invoke method (single-turn)
+  async invoke(
+    message: string,
+    threadId: string = 'default',
+  ): Promise<string> {
+    if (!this.agent)
+      throw new Error(
+        'Agent not initialized. Call initialize() first.',
+      );
+    try {
+      const systemContext = await this.getSchemaContext();
+      const agentFinalState = await this.agent.invoke(
         {
-          role: 'user',
-          parts: [
-            {
-              text:
-                'The following is the schema of the SQLite database you are interacting with:\n\n' +
-                schemaText,
-            },
+          messages: [
+            new HumanMessage(systemContext),
+            new HumanMessage(message),
           ],
         },
-      ];
-
-      const result = await model.generateContent({
-        contents: [
-          ...systemContext,
-          { role: 'user', parts: [{ text: userQuery }] },
-        ],
-      });
-
-      const response = result.response;
-      const part =
-        response?.candidates?.[0]?.content?.parts?.[0];
-
-      if (part?.functionCall) {
-        const functionCall = part.functionCall;
-        const toolResult =
-          await handleFunctionCall(functionCall);
-
-        const finalResult = await model.generateContent({
-          contents: [
-            { role: 'user', parts: [{ text: userQuery }] },
-            { role: 'model', parts: [{ functionCall }] },
-            { role: 'user', parts: [{ text: toolResult }] },
-          ],
-        });
-
-        return finalResult.response.text();
-      }
-
-      return response.text();
+        { configurable: { thread_id: threadId } },
+      );
+      const lastMessage =
+        agentFinalState.messages[
+          agentFinalState.messages.length - 1
+        ];
+      logger.info(`Agent Response: ${lastMessage.content}`);
+      return lastMessage.content as string;
+    } catch (error) {
+      logger.error('Error invoking MCP agent:', error);
+      throw error;
     }
+  }
 
-    // Run a few demo queries
-    // const queries = [
-    //   prompt
-    // ];
+  // Streaming response (multi-turn)
+  async *streamResponse(
+    message: string,
+    threadId: string = 'default',
+  ): AsyncGenerator<string> {
+    if (!this.agent)
+      throw new Error(
+        'Agent not initialized. Call initialize() first.',
+      );
+    try {
+      const systemContext = await this.getSchemaContext();
+      const agentFinalState = await this.agent.invoke(
+        {
+          messages: [
+            new HumanMessage(systemContext),
+            new HumanMessage(message),
+          ],
+        },
+        { configurable: { thread_id: threadId } },
+      );
+      for (const message of agentFinalState.messages) {
+        yield message.content as string;
+      }
+    } catch (error) {
+      logger.error(
+        'Error streaming MCP agent response:',
+        error,
+      );
+      throw error;
+    }
+  }
 
-    // for (const [i, query] of queries.entries()) {
-    //   logger.info(`\n▶️ Demo #${i + 1}`);
-    //   const response = await processQuery(query);
-    //   logger.info('\n💬 Gemini says:\n' + '-'.repeat(40));
-    //   logger.info(response);
-    //   logger.info('-'.repeat(40));
-    //   await new Promise((res) => setTimeout(res, 1500));
-    // }
-    const response = await processQuery(prompt);
-    logger.info(response);
-  } catch (err) {
-    logger.error(err);
-  } finally {
-    await transport.close();
-    logger.info('👋 Closed transport');
+  // Graceful shutdown
+  async close() {
+    if (this.transport) {
+      await this.transport.close();
+      logger.info('👋 Closed MCP transport');
+    }
   }
 }
-export default geminiWithFunctionCalling;
+
+// Remove old function-based export
+// export default geminiWithFunctionCalling;
