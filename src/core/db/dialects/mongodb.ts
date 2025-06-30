@@ -5,8 +5,6 @@ import { Dialect, Column } from './types.js';
 import logger from '../../../logger.js';
 import { loadSchemaFromMongoose } from '../helpers/loadMongooseSchema';
 import { inferSchemaFromDocs } from '../helpers/inferSchemaFromDocs';
-import 'mcps-logger';
-import path from 'path';
 import fs from 'fs/promises';
 export class MongoDBDialect implements Dialect {
   private client: MongoClient;
@@ -108,38 +106,27 @@ export class MongoDBDialect implements Dialect {
 
     const modelCollections = new Set<string>();
     if (this.modelPath) {
-      console.warn('the model path is ', this.modelPath);
       try {
         const files = await fs.readdir(this.modelPath);
         for (const file of files) {
-          console.log('Raw file:', JSON.stringify(file)); // show exact string
           if (
             file.endsWith('.js') ||
             file.endsWith('.ts')
           ) {
             const name = file.replace(/\.(js|ts)$/, '');
-            console.log(
-              'Adding to modelCollections:',
-              name,
-            );
+
             modelCollections.add(name);
-            console.log(
-              'model collecttions just after assignign',
-              [...modelCollections],
-            );
           }
         }
       } catch (err) {
-        console.warn(
+        logger.error(
           `Failed to read model path: ${
             (err as Error).message
           }`,
         );
       }
     }
-    console.log('the model collections are ', [
-      ...modelCollections,
-    ]);
+
     const allCollections = new Set([
       ...dbCollections,
       ...modelCollections,
@@ -155,22 +142,14 @@ export class MongoDBDialect implements Dialect {
           `Collection ${name} {\n${colLines.join('\n')}\n}`,
         );
       } catch (err) {
-        console.log(
-          `Skipping "${name}" in schema due to error: ${
-            (err as Error).message
-          }`,
-        );
-        logger.warn(
+        logger.error(
           `Skipping "${name}" in schema due to error: ${
             (err as Error).message
           }`,
         );
       }
     }
-    console.warn(
-      'teh schema parts are ',
-      schemaParts.join('\n\n'),
-    );
+
     return schemaParts.join('\n\n');
   }
 
@@ -188,17 +167,9 @@ export class MongoDBDialect implements Dialect {
         logger.info(
           `Loaded Mongoose schema for ${collectionName}`,
         );
-        console.log(
-          `Loaded Mongoose schema for ${collectionName}`,
-        );
         return schema;
       } catch (err) {
-        logger.warn(
-          `Mongoose load failed for ${collectionName}: ${
-            (err as Error).message
-          }`,
-        );
-        console.warn(
+        logger.error(
           `Mongoose load failed for ${collectionName}: ${
             (err as Error).message
           }`,
@@ -216,7 +187,7 @@ export class MongoDBDialect implements Dialect {
         );
         return schema;
       } catch (err) {
-        logger.warn(
+        logger.error(
           `No schema found for ${collectionName} in singleSchemaFile: ${
             (err as Error).message
           }`,
@@ -247,7 +218,7 @@ export class MongoDBDialect implements Dialect {
   async insertRows(
     collectionName: string,
     columns: string[],
-    rows: any[][],
+    rows: unknown[][],
   ): Promise<void> {
     await this.ensureConnected();
     const db = this.client.db(this.dbName);

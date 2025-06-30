@@ -7,7 +7,6 @@ import logger from '../logger.js';
 import { DialectConfig } from '../core/db/dialects/types.js';
 import { ChatOpenAI } from '@langchain/openai';
 import 'dotenv/config';
-import { loadMcpTools } from '@langchain/mcp-adapters';
 import { DynamicStructuredTool } from '@langchain/core/tools';
 export enum LLMProvider {
   GEMINI = 'gemini',

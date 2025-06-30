@@ -8,6 +8,7 @@ export type Column = {
 export interface Dialect {
   listTables(): Promise<string[]>;
   getSchema(): Promise<string>;
+  runQuery(sql: string): Promise<any>;
   getColumns(tableName: string): Promise<Column[]>;
   insertRows(
     tableName: string,

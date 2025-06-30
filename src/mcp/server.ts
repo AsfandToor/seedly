@@ -1,3 +1,4 @@
+ 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
@@ -5,14 +6,10 @@ import { z } from 'zod';
 import logger from '../logger.js';
 import { Seedly } from './tools.js';
 //add the line below to turn on debug mode and send logs to mcps-logger
-import 'mcps-logger/console';
+// import 'mcps-logger/console';
 const server = new McpServer({
   name: 'seeder',
   version: '1.0.0',
-  //turn on and use with  npx mcps-logger  to see server logs with the inspector
-  // capabilities: {
-  //   logging: {},
-  // },
 });
 const args = process.argv.slice(2); // The first two elements are 'node' and the script path
 

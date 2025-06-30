@@ -1,11 +1,8 @@
+ 
 import { generateValueWithLLM } from '../core/data-generator.js';
 import { getDialect } from '../core/db/dialects/index.js';
-import {
-  Dialect,
-  DialectConfig,
-} from '../core/db/dialects/types.js';
+import { DialectConfig } from '../core/db/dialects/types.js';
 import logger from '../logger.js';
-import 'mcps-logger/console';
 
 export class Seedly {
   private dialect;
@@ -47,7 +44,8 @@ export class Seedly {
   async query(queryString: string): Promise<any> {
     try {
       logger.info(`Tool 'query' called`);
-      const response = this.dialect.runQuery(queryString);
+      const response =
+        await this.dialect.runQuery(queryString);
       return {
         content: [
           {
@@ -76,9 +74,8 @@ export class Seedly {
       logger.info(
         `Tool 'seed-table' called for table: ${tableName}, count: ${count}`,
       );
-      const columns = await this.dialect.getColumns(
-        tableName,
-      );
+      const columns =
+        await this.dialect.getColumns(tableName);
       logger.warn(columns);
       if (columns.length === 0) {
         throw new Error(

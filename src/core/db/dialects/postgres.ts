@@ -75,10 +75,6 @@ export class PostgresDialect implements Dialect {
         },
         'Error in runQuery function.',
       );
-      console.error(
-        'after querying the table (catch block): ',
-        err,
-      );
       throw err; // Re-throw the original error for upstream handling
     } finally {
       client.release();
@@ -88,8 +84,6 @@ export class PostgresDialect implements Dialect {
     const client = await this.pool.connect();
     try {
       logger.info('before querying the table');
-      console.log('before querying the table'); // Corrected typo here
-
       const res = await client.query(
         `
         SELECT
@@ -148,7 +142,7 @@ export class PostgresDialect implements Dialect {
             .split(',')
             .map((s: string) =>
               s.trim().replace(/^"|"$/g, ''),
-            ); // <-- Fix: Explicitly type 's' as string
+            );
 
           if (parsedEnumValues!.length === 0) {
             parsedEnumValues = undefined;
@@ -165,37 +159,22 @@ export class PostgresDialect implements Dialect {
         };
       });
 
-      // --- ENHANCED CONSOLE.LOG FOR ENUM VALUES CHECK ---
-      console.log(
-        '--- Fetched Columns Details (PostgresDialect) ---',
-      );
       columns.forEach((col) => {
         let details = `- Name: ${col.name}, Type: ${col.type}, PK: ${col.pk}`;
         if (
           col.enumValues !== undefined &&
           col.enumValues !== null
         ) {
-          // More explicit check
-          console.log(
-            `DEBUG: col.name=${col.name}, col.enumValues type=${typeof col.enumValues}, col.enumValues value=`,
-            col.enumValues,
-          ); // <-- NEW DEBUG LINE
           if (Array.isArray(col.enumValues)) {
-            // <-- Check if it's actually an array
             details += `, Enum Values: [${col.enumValues.join(', ')}]`;
           } else {
-            // If it's not an array, log what it actually is
             details += `, Enum Values: (Not an array! Actual Type: ${typeof col.enumValues}, Value: ${JSON.stringify(col.enumValues)})`;
           }
         } else {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           details += `, Enum Values: ${col.enumValues === null ? 'null' : 'undefined'}`; // For clarity if null/undefined
         }
-        console.log(details);
       });
-      console.log(
-        '--------------------------------------------------',
-      );
-      // --- END ENHANCED CONSOLE.LOG ---
 
       return columns;
     } catch (err: any) {
@@ -207,10 +186,7 @@ export class PostgresDialect implements Dialect {
         },
         'Error in getColumns query.',
       );
-      console.error(
-        'after querying the table (catch block): ',
-        err,
-      );
+
       throw err; // Re-throw the original error for upstream handling
     } finally {
       client.release();

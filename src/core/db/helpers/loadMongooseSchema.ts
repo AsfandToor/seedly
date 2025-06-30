@@ -1,8 +1,8 @@
 import path from 'path';
 import { Column } from '../dialects/types.js';
-import mongoose, { SchemaType } from 'mongoose';
 import fs from 'fs/promises';
-import 'mcps-logger';
+import { SchemaType } from 'mongoose';
+import logger from '../../../logger.js';
 export async function loadSchemaFromMongoose(
   modelPath: string,
   collectionName: string,
@@ -21,13 +21,12 @@ export async function loadSchemaFromMongoose(
       absPath,
       `${collectionName}.ts`,
     );
-    console.log('the ts path is ', tsPath);
     try {
       await fs.access(jsPath);
       absPath = jsPath;
       found = true;
     } catch (e: any) {
-      console.error(e.message);
+      logger.error(e.message);
     }
     if (!found) {
       try {
@@ -35,7 +34,7 @@ export async function loadSchemaFromMongoose(
         absPath = tsPath;
         found = true;
       } catch (e: any) {
-        console.error(e.message);
+        logger.error(e.message);
       }
     }
     if (!found) {
