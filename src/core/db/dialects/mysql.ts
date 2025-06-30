@@ -46,6 +46,7 @@ export class MysqlDialect implements Dialect {
   async runQuery(
     sql: string,
   ): Promise<mysql.RowDataPacket[]> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [rows, _] =
       await this.pool.query<mysql.RowDataPacket[]>(sql);
     return rows;

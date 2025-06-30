@@ -1,11 +1,11 @@
-import 'esbuild-register/dist/node';
+#!/usr/bin/env node
 import { Command } from 'commander';
 import { Seedly } from '../mcp/client';
 
 // Usage examples:
 /**
  * Postgres:
- * node dist/cli/index.js start \
+ * seedly start \
  *   --dialect postgres \
  *   --host localhost \
  *   --port 5432 \
@@ -15,21 +15,21 @@ import { Seedly } from '../mcp/client';
  *   "seed the users table with 5 records"
  *
  * MongoDB (with optional model dir):
- * node dist/cli/index.js start "Seed the users collection with 10 records" \
+ * seedly start "Seed the users collection with 10 records" \
  *   --dialect mongodb \
  *   --uri mongodb://localhost:27017 \
  *   --database test \
  *   --models-dir ./models
  *
  * MongoDB (with --single-schema for new collections):
- * node dist/cli/index.js start "Seed the logs collection with 5 entries" \
+ * seedly start "Seed the logs collection with 5 entries" \
  *   --dialect mongodb \
  *   --uri mongodb://localhost:27017 \
  *   --database test \
  *   --single-schema ./schemas/logs.js
  *
  * SQLite:
- * node dist/cli/index.js start "seed the users table with 5 records" \
+ * seedly start "seed the users table with 5 records" \
  *   --dialect sqlite \
  *   --file database.db
  */
@@ -71,6 +71,7 @@ function attachDbOptions(cmd: Command) {
     .argument('<prompt>', 'Your natural language query');
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractDbConfig(options: any) {
   return {
     type: options.dialect,

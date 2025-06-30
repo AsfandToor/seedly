@@ -2,7 +2,6 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Column } from './db/dialects/types.js';
 import 'dotenv/config';
 import logger from '../logger.js';
-import 'mcps-logger/console';
 import OpenAI from 'openai';
 const googleApiKey = process.env.GOOGLE_API_KEY;
 const openAiApiKey = process.env.OPENAI_API_KEY;
@@ -20,14 +19,12 @@ let geminiModel: ReturnType<
 if (openAiApiKey) {
   provider = 'openai';
   openai = new OpenAI({ apiKey: openAiApiKey });
-  console.log('initialized generator for openai');
 } else {
   provider = 'gemini';
   const genAI = new GoogleGenerativeAI(googleApiKey!);
   geminiModel = genAI.getGenerativeModel({
     model: 'gemini-2.0-flash',
   });
-  console.log('initialized generator for gemini');
 }
 
 export async function generateValueWithLLM(
@@ -35,7 +32,7 @@ export async function generateValueWithLLM(
   count: number,
   dialectType: 'sql' | 'nosql' = 'sql',
 ) {
-  let promptPrefix =
+  const promptPrefix =
     dialectType === 'sql'
       ? `a SQL column`
       : `a NoSQL document field`;
@@ -57,7 +54,6 @@ export async function generateValueWithLLM(
     let responseText: string;
 
     if (provider === 'gemini') {
-      console.log('came inside gemini');
       const res = await geminiModel!.generateContent({
         contents: [
           { role: 'user', parts: [{ text: prompt }] },
@@ -65,7 +61,6 @@ export async function generateValueWithLLM(
       });
       responseText = res.response.text().trim();
     } else {
-      console.log('came inside openai');
       const res = await openai!.chat.completions.create({
         model: 'gpt-3.5-turbo',
         messages: [{ role: 'user', content: prompt }],
@@ -73,9 +68,6 @@ export async function generateValueWithLLM(
       responseText =
         res.choices[0].message.content?.trim() || '';
     }
-
-    logger.warn('Data from LLM:');
-    logger.warn(responseText);
 
     const clean = responseText
       .replace(/^```json\s*/i, '')
@@ -91,9 +83,8 @@ export async function generateValueWithLLM(
     return parsed;
   } catch (err) {
     logger.error(
-      'Error getting the response data from LLM',
+      `Error getting the response data from LLM ${(err as Error).message}`,
     );
-    console.error(err);
     throw new Error(
       `Invalid LLM response for column ${column.name}`,
     );

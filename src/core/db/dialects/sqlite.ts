@@ -1,3 +1,4 @@
+ 
 import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
 import { Dialect, Column } from './types.js';
@@ -55,7 +56,7 @@ export class SQLiteDialect implements Dialect {
     const placeholders = colNames.map(() => '?').join(', ');
     const sql = `INSERT INTO ${tableName} (${colNames.join(', ')}) VALUES (${placeholders})`;
     for (const row of rows) {
-      let r = await this.run(sql, row);
+      const r = await this.run(sql, row);
       logger.warn('after inserting the result is ');
       logger.warn(r);
     }

@@ -85,12 +85,12 @@ app.listen(port, () => {
 
 ```bash
 # SQLite
-node dist/cli/index.js start "Seed the users table with 5 records" \
+seedly start "Seed the users table with 5 records" \
   --dialect sqlite \
   --file ./database.db
 
 # PostgreSQL
-node dist/cli/index.js start "Seed the users table with 10 rows" \
+seedly start "Seed the users table with 10 rows" \
   --dialect postgres \
   --host localhost \
   --port 5432 \
@@ -99,14 +99,14 @@ node dist/cli/index.js start "Seed the users table with 10 rows" \
   --database my_database
 
 # MongoDB (with model directory)
-node dist/cli/index.js start "Seed the users collection with 10 documents" \
+seedly start "Seed the users collection with 10 documents" \
   --dialect mongodb \
   --uri mongodb://localhost:27017 \
   --database test \
   --models-dir ./models
 
 # MongoDB (with single schema file)
-node dist/cli/index.js start "Seed the logs collection with 5 entries" \
+seedly start "Seed the logs collection with 5 entries" \
   --dialect mongodb \
   --uri mongodb://localhost:27017 \
   --database test \
